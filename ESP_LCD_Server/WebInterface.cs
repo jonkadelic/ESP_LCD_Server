@@ -13,17 +13,15 @@ namespace ESP_LCD_Server
         private static HttpListener listener = new HttpListener();
         private static Thread listenerThread;
         private const string baseUrl = "http://+:80";
-        private static AbstractPage overrideMember = null;
-        private static Timer notifyTimer;
 
         // Properties
         public static bool IsRunning { get; private set; }
-        public static List<IWebInterfaceMember> Members { get; } = new List<IWebInterfaceMember>();
+        public static List<IWebInterfaceEndpoint> Endpoints { get; } = new List<IWebInterfaceEndpoint>();
 
         // Functions
-        public static void AddMember(IWebInterfaceMember member)
+        public static void AddEndpoint(IWebInterfaceEndpoint endpoint)
         {
-            if (Members.Select((x) => x.Endpoint).Contains(member.Endpoint))
+            if (Endpoints.Select((x) => x.Endpoint).Contains(endpoint.Endpoint))
             {
                 throw new Exception("Endpoint is already in use!");
             }
@@ -33,9 +31,8 @@ namespace ESP_LCD_Server
             }
             else
             {
-                Members.Add(member);
-                if (member is AbstractPage) (member as AbstractPage).Notify += MemberNotify;
-                listener.Prefixes.Add($"{baseUrl}/{member.Endpoint}/");
+                Endpoints.Add(endpoint);
+                listener.Prefixes.Add($"{baseUrl}/{endpoint.Endpoint}/");
             }
         }
 
@@ -53,63 +50,39 @@ namespace ESP_LCD_Server
             while (true)
             {
                 HttpListenerContext context = listener.GetContext();
-                string endpoint = context.Request.Url.Segments[1].Replace("/", "");
-                IWebInterfaceMember validMember = null;
-                foreach (IWebInterfaceMember member in Members)
+                string targetEndpoint = context.Request.Url.Segments[1].Replace("/", "");
+                IWebInterfaceEndpoint validEndpoint = null;
+                foreach (IWebInterfaceEndpoint endpoint in Endpoints)
                 {
-                    if (endpoint == member.Endpoint)
+                    if (targetEndpoint == endpoint.Endpoint)
                     {
-                        validMember = member;
+                        validEndpoint = endpoint;
                         break;
                     }
                 }
-                if (validMember == null)
+                if (validEndpoint == null)
                 {
-                    // No appropriate member to respond with
+                    // No appropriate endpoint to respond with
                     context.Response.StatusCode = 404;
                     context.Response.ContentLength64 = 0;
                 }
                 else
                 {
-                    // Found appropriate member
-                    byte[] output;
-                    if (overrideMember != null)
-                    {
-                        output = overrideMember.GetResponseBody(context.Request);
-                        if (notifyTimer == null)
-                        {
-                            notifyTimer = new Timer(new TimerCallback(MemberEndNotify), null, overrideMember.NotifyDurationMs, Timeout.Infinite);
-                        }
-                    }
-                    else
-                    {
-                        output = validMember.GetResponseBody(context.Request);
-                    }
+                    Console.WriteLine($"Valid request from {context.Request.Url}.");
+                    // Found appropriate endpoint
+                    byte[] output = validEndpoint.GetResponseBody(context.Request);
                     context.Response.StatusCode = 200;
                     context.Response.ContentLength64 = output.Length;
                     try
                     {
                         context.Response.OutputStream.Write(output, 0, output.Length);
+                        Console.WriteLine($"Wrote response for {context.Request.Url}.");
                     }
                     catch (Exception) { }
 
                 }
                 context.Response.Close();
             }
-        }
-
-        private static void MemberNotify(AbstractPage page)
-        {
-            overrideMember = page;
-            Console.WriteLine($"Notifying from {page.Name}.");
-        }
-
-        private static void MemberEndNotify(object state)
-        {
-            if (overrideMember != null)
-                Console.WriteLine($"Ended notify from {overrideMember.Name}.");
-            overrideMember = null;
-            notifyTimer = null;
         }
     }
 }

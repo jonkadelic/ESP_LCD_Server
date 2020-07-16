@@ -27,7 +27,6 @@ namespace ESP_LCD_Server
         private Image attachment = null;
 
         public override string Name => "Discord";
-        public override string Endpoint => "page_discord";
         public override int NotifyDurationMs => 5000;
 
 
@@ -39,37 +38,40 @@ namespace ESP_LCD_Server
 
         public async override Task RenderFrameAsync()
         {
-            frame = new Bitmap(frameWidth, frameHeight);
+            Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
             await Task.Run(() =>
             {
-                Graphics g = Graphics.FromImage(frame);
+                Graphics g = Graphics.FromImage(Frame);
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
                 if (lastMessage == null)
                 {
-                    g.DrawString("No messages yet :(", headerFont, Brushes.White, new Rectangle(0, 0, frameWidth, frameHeight), new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                    g.DrawString("No messages yet :(", headerFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT), new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                    ReleaseFrame();
                     return;
                 }
 
-                g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, frameWidth - 38, 20), headerFormat);
+                g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, FRAME_WIDTH - 38, 20), headerFormat);
                 g.DrawString($"{lastMessage.Author.Username} - {lastMessage.CreatedAt.LocalDateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
                 int attachmentHeight = 0;
                 if (attachment != null)
                 {
-                    attachmentHeight = (int)(((float)frameWidth / attachment.Width) * attachment.Height);
-                    g.DrawImage(attachment, new Rectangle(0, 40, frameWidth, attachmentHeight));
+                    attachmentHeight = (int)(((float)FRAME_WIDTH / attachment.Width) * attachment.Height);
+                    g.DrawImage(attachment, new Rectangle(0, 40, FRAME_WIDTH, attachmentHeight));
                 }
-                g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, frameWidth, frameHeight - 40));
+                g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, FRAME_WIDTH, FRAME_HEIGHT - 40));
                 GraphicsPath path = new GraphicsPath();
                 path.AddEllipse(new Rectangle(1, 1, 36, 36));
                 g.SetClip(path);
                 if (authorAvatar != null)
                     g.DrawImage(authorAvatar, new Rectangle(1, 1, 36, 36));
+
+                ReleaseFrame();
             });
         }
 
-        protected async override Task HandleActionAsync()
+        public override Task HandleActionAsync()
         {
-            return;
+            return Task.CompletedTask;
         }
 
         private async void UpdateTask()

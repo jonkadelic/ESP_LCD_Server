@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ESP_LCD_Server
 {
-    public class TestMember : IWebInterfaceMember
+    public class TestMember : IWebInterfaceEndpoint
     {
         // Properties
         public string Name { get; }

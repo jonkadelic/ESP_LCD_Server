@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ESP_LCD_Server
 {
-    public interface IWebInterfaceMember
+    public interface IWebInterfaceEndpoint
     {
         // Properties
         public string Name { get; }

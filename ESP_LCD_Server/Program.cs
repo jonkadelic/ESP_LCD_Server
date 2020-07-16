@@ -8,34 +8,25 @@ namespace ESP_LCD_Server
     {
         static void Main()
         {
-            InterfacePageList interfacePageList = new InterfacePageList();
             PageSpotify page_spotify = new PageSpotify();
             PageWeather page_weather = new PageWeather();
             PageDiscord page_discord = new PageDiscord();
 
-            WebInterface.AddMember(interfacePageList);
-            WebInterface.AddMember(page_spotify);
-            WebInterface.AddMember(page_weather);
-            WebInterface.AddMember(page_discord);
+            PageManager.AddPage(page_spotify);
+            PageManager.AddPage(page_weather);
+            PageManager.AddPage(page_discord);
 
-            new Thread(RenderPages).Start();
+            PageManager.Run();
+
+            EndpointPageAction endpoint_page_action = new EndpointPageAction();
+            EndpointPageGetFrame endpoint_page_get_frame = new EndpointPageGetFrame();
+            EndpointPageNext endpoint_page_next = new EndpointPageNext();
+
+            WebInterface.AddEndpoint(endpoint_page_action);
+            WebInterface.AddEndpoint(endpoint_page_get_frame);
+            WebInterface.AddEndpoint(endpoint_page_next);
 
             WebInterface.Run();
-        }
-
-        static async void RenderPages()
-        {
-            while (true)
-            {
-                foreach(IWebInterfaceMember member in WebInterface.Members)
-                {
-                    if (member is AbstractPage)
-                    {
-                        await (member as AbstractPage).RenderFrameAsync();
-                    }
-                }
-                Thread.Sleep(250);
-            }
         }
     }
 }

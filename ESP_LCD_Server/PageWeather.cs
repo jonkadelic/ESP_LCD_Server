@@ -28,7 +28,6 @@ namespace ESP_LCD_Server
         private const int lowestTemperature = 0;
 
         public override string Name => "Weather";
-        public override string Endpoint => "page_weather";
         public override int NotifyDurationMs => 0;
 
         public PageWeather()
@@ -39,11 +38,11 @@ namespace ESP_LCD_Server
 
         public override async Task RenderFrameAsync()
         {
-            frame = new Bitmap(frameWidth, frameHeight);
+            Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
             await Task.Run(() =>
             {
                 if (cachedQuery == null || weatherIcon == null) return;
-                Graphics g = Graphics.FromImage(frame);
+                Graphics g = Graphics.FromImage(Frame);
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
                 string temperature = $"{(int)cachedQuery.Main.Temperature.CelsiusCurrent}";
                 SizeF temperatureStringMeasurement = g.MeasureString(temperature, temperatureFont);
@@ -52,14 +51,15 @@ namespace ESP_LCD_Server
                 g.DrawString(temperature, temperatureFont, temperatureBrush, -6, 12);
                 g.DrawString("°C", unitsFont, temperatureBrush, temperatureStringMeasurement.Width - 15, 14);
                 g.DrawImage(weatherIcon, 80, 12, 40, 40);
-                g.DrawString(cachedQuery.Weathers[0].Description, medFont, Brushes.White, new Rectangle(0, 54, frameWidth, 16), new StringFormat() { Alignment = StringAlignment.Center });
+                g.DrawString(cachedQuery.Weathers[0].Description, medFont, Brushes.White, new Rectangle(0, 54, FRAME_WIDTH, 16), new StringFormat() { Alignment = StringAlignment.Center });
                 g.DrawString($"High:\t{(int)cachedQuery.Main.Temperature.CelsiusMaximum}°C\nLow:\t{(int)cachedQuery.Main.Temperature.CelsiusMinimum}°C\nSunrise:\t{cachedQuery.Sys.Sunrise.ToShortTimeString()}\nSunset:\t{cachedQuery.Sys.Sunset.ToShortTimeString()}\nWind:\t{(int)(cachedQuery.Wind.SpeedFeetPerSecond / 1.467)}mph", smallFont, Brushes.White, 3, 85);
+                ReleaseFrame();
             });
         }
 
-        protected override async Task HandleActionAsync()
+        public override Task HandleActionAsync()
         {
-            return;
+            return Task.CompletedTask;
         }
 
         private async void UpdateTask()

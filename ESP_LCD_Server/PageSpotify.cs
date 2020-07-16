@@ -34,7 +34,6 @@ namespace ESP_LCD_Server
 
 
         public override string Name => "Spotify";
-        public override string Endpoint => "page_spotify";
         public override int NotifyDurationMs => 1000;
 
         public PageSpotify()
@@ -42,7 +41,7 @@ namespace ESP_LCD_Server
             UpdateTask();
         }
 
-        protected override async Task HandleActionAsync()
+        public override async Task HandleActionAsync()
         {
             await Task.Run(() =>
             {
@@ -53,16 +52,17 @@ namespace ESP_LCD_Server
 
         public override async Task RenderFrameAsync()
         {
-            frame = new Bitmap(frameWidth, frameHeight);
+            Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
             await Task.Run(() =>
             {
                 string songName, songArtist, songAlbum;
-                Graphics g = Graphics.FromImage(frame);
+                Graphics g = Graphics.FromImage(Frame);
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
 
                 if (cachedCurrentlyPlaying == null)
                 {
-                    g.DrawString("Nothing is playing on Spotify :(", bigFont, Brushes.White, new Rectangle(0, 0, frameWidth, frameHeight), pauseFormat);
+                    g.DrawString("Nothing is playing on Spotify :(", bigFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT), pauseFormat);
+                    ReleaseFrame();
                     return;
                 }
 
@@ -83,9 +83,9 @@ namespace ESP_LCD_Server
                 {
                     if (artImageBlurred != null)
                     {
-                        g.DrawImage(artImageBlurred, new Rectangle(-16, 0, frameHeight, frameHeight));
+                        g.DrawImage(artImageBlurred, new Rectangle(-16, 0, FRAME_HEIGHT, FRAME_HEIGHT));
                     }
-                    g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 0, frameWidth, frameHeight));
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT));
 
                     if (artImage != null)
                     {
@@ -111,11 +111,12 @@ namespace ESP_LCD_Server
                         songArtist = episode.Show.Publisher;
                         songAlbum = episode.Show.Name;
                     }
-                    g.DrawString($"{songName}", bigFont, Brushes.Black, new Rectangle(1, 1, frameWidth, 16), stringFormat);
-                    g.DrawString($"{songName}", bigFont, Brushes.White, new Rectangle(0, 0, frameWidth, 16), stringFormat);
-                    g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.Black, new Rectangle(1, 17, frameWidth, 24), stringFormat);
-                    g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.White, new Rectangle(0, 16, frameWidth, 24), stringFormat);
+                    g.DrawString($"{songName}", bigFont, Brushes.Black, new Rectangle(1, 1, FRAME_WIDTH, 16), stringFormat);
+                    g.DrawString($"{songName}", bigFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, 16), stringFormat);
+                    g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.Black, new Rectangle(1, 17, FRAME_WIDTH, 24), stringFormat);
+                    g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.White, new Rectangle(0, 16, FRAME_WIDTH, 24), stringFormat);
                 }
+                ReleaseFrame();
             });
         }
 
