@@ -16,8 +16,12 @@ namespace ESP_LCD_Server
         protected const int frameHeight = 160;
         protected bool needsFullRefresh = false;
 
+        public event NotifyEventHandler Notify;
+        public delegate void NotifyEventHandler(AbstractPage sender);
+
         public abstract string Name { get; }
         public abstract string Endpoint { get; }
+        public abstract int NotifyDurationMs { get; }
 
         public byte[] GetResponseBody(HttpListenerRequest request)
         {
@@ -94,6 +98,12 @@ namespace ESP_LCD_Server
             }
 
             return data;
+        }
+
+        protected void OnNotify()
+        {
+            NotifyEventHandler handler = Notify;
+            handler?.Invoke(this);
         }
 
         public abstract Task RenderFrameAsync();

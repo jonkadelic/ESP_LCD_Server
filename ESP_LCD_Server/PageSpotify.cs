@@ -34,8 +34,8 @@ namespace ESP_LCD_Server
 
 
         public override string Name => "Spotify";
-
         public override string Endpoint => "page_spotify";
+        public override int NotifyDurationMs => 1000;
 
         public PageSpotify()
         {
@@ -54,31 +54,48 @@ namespace ESP_LCD_Server
         public override async Task RenderFrameAsync()
         {
             frame = new Bitmap(frameWidth, frameHeight);
-            if (artImage == null || artImageBlurred == null) return;
             await Task.Run(() =>
             {
                 string songName, songArtist, songAlbum;
                 Graphics g = Graphics.FromImage(frame);
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+
+                if (cachedCurrentlyPlaying == null)
+                {
+                    g.DrawString("Nothing is playing on Spotify :(", bigFont, Brushes.White, new Rectangle(0, 0, frameWidth, frameHeight), pauseFormat);
+                    return;
+                }
+
                 if (renderArtBig)
                 {
-                    g.DrawImage(artImage, new Rectangle(0, 16, artLargeDims, artLargeDims));
+                    if (artImage != null)
+                    {
+                        g.DrawImage(artImage, new Rectangle(0, 16, artLargeDims, artLargeDims));
+                    }
                     if (cachedCurrentlyPlaying.IsPlaying == false)
                     {
                         g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 16, artLargeDims, artLargeDims));
                         g.DrawString("| |", bigFont, Brushes.White, new Rectangle(0, 16, artLargeDims, artLargeDims), pauseFormat);
+                        g.DrawString("| |", bigFont, Brushes.White, new Rectangle(1, 16, artLargeDims, artLargeDims), pauseFormat);
                     }
                 }
                 else
                 {
-                    g.DrawImage(artImageBlurred, new Rectangle(-16, 0, frameHeight, frameHeight));
+                    if (artImageBlurred != null)
+                    {
+                        g.DrawImage(artImageBlurred, new Rectangle(-16, 0, frameHeight, frameHeight));
+                    }
                     g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 0, frameWidth, frameHeight));
 
-                    g.DrawImage(artImage, new Rectangle(14, 50, artSmallDims, artSmallDims));
+                    if (artImage != null)
+                    {
+                        g.DrawImage(artImage, new Rectangle(14, 50, artSmallDims, artSmallDims));
+                    }
                     if (cachedCurrentlyPlaying.IsPlaying == false)
                     {
                         g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(14, 50, artSmallDims, artSmallDims));
                         g.DrawString("| |", bigFont, Brushes.White, new Rectangle(14, 50, artSmallDims, artSmallDims), pauseFormat);
+                        g.DrawString("| |", bigFont, Brushes.White, new Rectangle(15, 50, artSmallDims, artSmallDims), pauseFormat);
                     }
                     if (cachedCurrentlyPlaying.Item.Type == ItemType.Track)
                     {
@@ -119,7 +136,11 @@ namespace ESP_LCD_Server
                 client = new SpotifyClient(accessToken);
             }
             CurrentlyPlaying newCurrentlyPlaying = await client.Player.GetCurrentlyPlaying(new PlayerCurrentlyPlayingRequest(PlayerCurrentlyPlayingRequest.AdditionalTypes.All));
-            if (newCurrentlyPlaying == null) return;
+            if (newCurrentlyPlaying == null)
+            {
+                cachedCurrentlyPlaying = null;
+                return;
+            }
 
             if (cachedCurrentlyPlaying != null)
             {
@@ -139,6 +160,8 @@ namespace ESP_LCD_Server
             using MemoryStream ms = new MemoryStream(data);
             artImage = System.Drawing.Image.FromStream(ms);
             artImageBlurred = new GaussianBlur((Bitmap)artImage).Process(20);
+
+            OnNotify();
         }
 
         private async Task RefreshAccessToken()

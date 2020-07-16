@@ -13,6 +13,8 @@ namespace ESP_LCD_Server
         private static HttpListener listener = new HttpListener();
         private static Thread listenerThread;
         private const string baseUrl = "http://+:80";
+        private static AbstractPage overrideMember = null;
+        private static Timer notifyTimer;
 
         // Properties
         public static bool IsRunning { get; private set; }
@@ -32,6 +34,7 @@ namespace ESP_LCD_Server
             else
             {
                 Members.Add(member);
+                if (member is AbstractPage) (member as AbstractPage).Notify += MemberNotify;
                 listener.Prefixes.Add($"{baseUrl}/{member.Endpoint}/");
             }
         }
@@ -69,7 +72,19 @@ namespace ESP_LCD_Server
                 else
                 {
                     // Found appropriate member
-                    byte[] output = validMember.GetResponseBody(context.Request);
+                    byte[] output;
+                    if (overrideMember != null)
+                    {
+                        output = overrideMember.GetResponseBody(context.Request);
+                        if (notifyTimer == null)
+                        {
+                            notifyTimer = new Timer(new TimerCallback(MemberEndNotify), null, overrideMember.NotifyDurationMs, Timeout.Infinite);
+                        }
+                    }
+                    else
+                    {
+                        output = validMember.GetResponseBody(context.Request);
+                    }
                     context.Response.StatusCode = 200;
                     context.Response.ContentLength64 = output.Length;
                     try
@@ -81,6 +96,20 @@ namespace ESP_LCD_Server
                 }
                 context.Response.Close();
             }
+        }
+
+        private static void MemberNotify(AbstractPage page)
+        {
+            overrideMember = page;
+            Console.WriteLine($"Notifying from {page.Name}.");
+        }
+
+        private static void MemberEndNotify(object state)
+        {
+            if (overrideMember != null)
+                Console.WriteLine($"Ended notify from {overrideMember.Name}.");
+            overrideMember = null;
+            notifyTimer = null;
         }
     }
 }

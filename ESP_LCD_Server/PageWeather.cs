@@ -29,6 +29,7 @@ namespace ESP_LCD_Server
 
         public override string Name => "Weather";
         public override string Endpoint => "page_weather";
+        public override int NotifyDurationMs => 0;
 
         public PageWeather()
         {

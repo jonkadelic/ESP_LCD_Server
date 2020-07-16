@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ESP_LCD_Server
@@ -17,15 +18,17 @@ namespace ESP_LCD_Server
     {
         private DiscordSocketClient client;
         private SocketMessage lastMessage = null;
-        private readonly Font headerFont = new Font(FontFamily.GenericSansSerif, 10);
+        private string lastMessageContent = null;
+        private readonly Font headerFont = new Font("Segoe UI Emoji", 10);
         private readonly StringFormat headerFormat = new StringFormat() { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
-        private readonly Font nameTimeFont = new Font(FontFamily.GenericSansSerif, 8, FontStyle.Bold);
-        private readonly Font messageFont = new Font(FontFamily.GenericSansSerif, 8);
+        private readonly Font nameTimeFont = new Font("Segoe UI Emoji", 8, FontStyle.Bold);
+        private readonly Font messageFont = new Font("Segoe UI Emoji", 8);
         private Image authorAvatar = null;
         private Image attachment = null;
 
         public override string Name => "Discord";
         public override string Endpoint => "page_discord";
+        public override int NotifyDurationMs => 5000;
 
 
         public PageDiscord()
@@ -48,14 +51,14 @@ namespace ESP_LCD_Server
                 }
 
                 g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, frameWidth - 38, 20), headerFormat);
-                g.DrawString($"{lastMessage.Author.Username} - {lastMessage.CreatedAt.DateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
+                g.DrawString($"{lastMessage.Author.Username} - {lastMessage.CreatedAt.LocalDateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
                 int attachmentHeight = 0;
                 if (attachment != null)
                 {
                     attachmentHeight = (int)(((float)frameWidth / attachment.Width) * attachment.Height);
                     g.DrawImage(attachment, new Rectangle(0, 40, frameWidth, attachmentHeight));
                 }
-                g.DrawString(lastMessage.Content, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, frameWidth, frameHeight - 40));
+                g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, frameWidth, frameHeight - 40));
                 GraphicsPath path = new GraphicsPath();
                 path.AddEllipse(new Rectangle(1, 1, 36, 36));
                 g.SetClip(path);
@@ -85,9 +88,25 @@ namespace ESP_LCD_Server
 
         private Task Client_MessageReceived(SocketMessage arg)
         {
-            if ((arg.Channel is SocketDMChannel || arg.Channel is SocketGroupChannel) && (arg.Author.Id != client.CurrentUser.Id))
+            if ((arg.Channel is SocketDMChannel || arg.Channel is SocketGroupChannel || arg.MentionedUsers.Select(x => x.Id).Contains(client.CurrentUser.Id) == true) && (arg.Author.Id != client.CurrentUser.Id))
             {
                 lastMessage = arg;
+
+                Regex regex = new Regex(@"<@!(\d+)>");
+                lastMessageContent = regex.Replace(lastMessage.Content, (x) =>
+                {
+                    ulong userId = ulong.Parse(x.Groups[1].Value);
+                    string usernameClean;
+                    if (arg.Channel is SocketGuildChannel)
+                    {
+                        usernameClean = (arg.Channel as SocketGuildChannel).GetUser(userId).Nickname;
+                    }
+                    else
+                    {
+                        usernameClean = client.GetUser(userId).Username.Split("#")[0];
+                    }
+                    return $"  @{usernameClean}  ";
+                });
 
                 using WebClient webClient = new WebClient();
                 string url;
@@ -109,6 +128,8 @@ namespace ESP_LCD_Server
                 {
                     attachment = null;
                 }
+
+                OnNotify();
             }
             return Task.CompletedTask;
         }

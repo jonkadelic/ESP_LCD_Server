@@ -6,12 +6,14 @@ namespace ESP_LCD_Server
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
+            InterfacePageList interfacePageList = new InterfacePageList();
             PageSpotify page_spotify = new PageSpotify();
             PageWeather page_weather = new PageWeather();
             PageDiscord page_discord = new PageDiscord();
 
+            WebInterface.AddMember(interfacePageList);
             WebInterface.AddMember(page_spotify);
             WebInterface.AddMember(page_weather);
             WebInterface.AddMember(page_discord);
