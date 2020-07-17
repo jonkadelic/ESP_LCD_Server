@@ -5,6 +5,7 @@ using System.Net;
 using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
+using System.Diagnostics;
 
 namespace ESP_LCD_Server
 {
@@ -47,7 +48,7 @@ namespace ESP_LCD_Server
             {
                 dataBuffer = client.Receive(ref sender);
                 string targetEndpoint = Encoding.ASCII.GetString(dataBuffer);
-                Console.WriteLine($"Received UDP endpoint request {targetEndpoint}.");
+                Debug.WriteLine($"Received UDP endpoint request {targetEndpoint}.");
                 DateTime startTime = DateTime.Now;
                 IWebInterfaceEndpoint validEndpoint = null;
                 foreach (IWebInterfaceEndpoint endpoint in Endpoints)
@@ -71,7 +72,7 @@ namespace ESP_LCD_Server
                     byte[] output = validEndpoint.GetResponseBody(targetEndpoint);
                     TimeSpan responseTime = DateTime.Now - responseStartTime;
 
-                    Console.WriteLine($"Replying with {output.Length} bytes of data to {sender.Address}:{sender.Port}.");
+                    Debug.WriteLine($"Replying with {output.Length} bytes of data to {sender.Address}:{sender.Port}.");
 
                     if (output.Length <= UDP_PACKET_SIZE)
                     {
@@ -87,7 +88,7 @@ namespace ESP_LCD_Server
                         client.Send(output[(i * UDP_PACKET_SIZE)..], output.Length - (i * UDP_PACKET_SIZE), sender);
                     }
 
-                    Console.WriteLine($"Took {(int)(DateTime.Now - startTime).TotalMilliseconds}ms to respond to \"{targetEndpoint}\" ({(int)responseTime.TotalMilliseconds}ms to generate body).");
+                    Debug.WriteLine($"Took {(int)(DateTime.Now - startTime).TotalMilliseconds}ms to respond to \"{targetEndpoint}\" ({(int)responseTime.TotalMilliseconds}ms to generate body).");
                 }
             }
         }

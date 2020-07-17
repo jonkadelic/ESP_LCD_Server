@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace ESP_LCD_Server
 {
-    public class PageDiscord : AbstractPage
+    public class PageDiscord : AbstractNotifyingPage
     {
         private DiscordSocketClient client;
         private SocketMessage lastMessage = null;
@@ -38,9 +38,8 @@ namespace ESP_LCD_Server
 
         public override Bitmap RenderFrame()
         {
-            DateTime startTime = DateTime.Now;
             Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
-            Graphics g = Graphics.FromImage(Frame);
+            using Graphics g = Graphics.FromImage(Frame);
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
             if (lastMessage == null)
             {
@@ -63,7 +62,24 @@ namespace ESP_LCD_Server
             if (authorAvatar != null)
                 g.DrawImage(authorAvatar, new Rectangle(1, 1, 36, 36));
 
-            Console.WriteLine($"Discord rendered in {(int)(DateTime.Now - startTime).TotalMilliseconds}ms.");
+            return Frame;
+        }
+
+        public override Bitmap RenderNotifyFrame()
+        {
+            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT / 3);
+            using Graphics g = Graphics.FromImage(Frame);
+            g.FillRectangle(Brushes.Black, new Rectangle(Point.Empty, Frame.Size));
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+            g.DrawString($"{lastMessage.Author.Username}", nameTimeFont, Brushes.White, 40, 0);
+
+            g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(40, 12, Frame.Width - 40, Frame.Height - 12));
+
+            GraphicsPath path = new GraphicsPath();
+            path.AddEllipse(new Rectangle(1, 1, 36, 36));
+            g.SetClip(path);
+            if (authorAvatar != null)
+                g.DrawImage(authorAvatar, new Rectangle(1, 1, 36, 36));
 
             return Frame;
         }
@@ -106,7 +122,7 @@ namespace ESP_LCD_Server
                     {
                         usernameClean = client.GetUser(userId).Username.Split("#")[0];
                     }
-                    return $"  @{usernameClean}  ";
+                    return $"[@{usernameClean}]";
                 });
 
                 using WebClient webClient = new WebClient();

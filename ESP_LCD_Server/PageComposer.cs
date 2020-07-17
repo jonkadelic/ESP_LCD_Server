@@ -28,7 +28,7 @@ namespace ESP_LCD_Server
                                                                                     frameSize: AbstractPage.FrameSize,
                                                                                     startPos: new Point(0, AbstractPage.FRAME_HEIGHT),
                                                                                     endPos: new Point(0, AbstractPage.FRAME_HEIGHT - 20));
-
+        private static AbstractPage notifyingPage = null;
         private static AbstractPage oldPage = null;
         private static AbstractPage newPage = null;
         private static bool pageMovingRight;
@@ -76,10 +76,12 @@ namespace ESP_LCD_Server
             footerTimer = new System.Threading.Timer((args) => footerTimer = null, null, FOOTER_DURATION_MS, Timeout.Infinite);
         }
 
-        private static void PageManager_Notify(AbstractPage page)
+        private static void PageManager_Notify(AbstractNotifyingPage page)
         {
+            if (page == PageManager.CurrentPage) return;
+            notifyingPage = page;
             notifyAnimator.HoldDuration = page.NotifyDurationMs;
-            notifyAnimator.MovingImage = page.RenderFrame();
+            notifyAnimator.MovingImage = page.RenderNotifyFrame();
             notifyAnimator.Start();
         }
 
@@ -126,7 +128,18 @@ namespace ESP_LCD_Server
 
             foreach (Animator animator in Animator.AnimatorsInProgress)
             {
-                g.DrawImageUnscaled(animator.RenderFrame(), Point.Empty);
+                Bitmap animFrame = animator.RenderFrame();
+                if (animator == notifyAnimator)
+                {
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(200, Color.Black)), new Rectangle(Point.Empty, result.Size));
+                    g.DrawImageUnscaled(animFrame, Point.Empty);
+                    g.DrawString(notifyingPage.Name, footerFont, Brushes.Black, new Rectangle(1, result.Height - 40 + 1, result.Width, 40), footerFormat);
+                    g.DrawString(notifyingPage.Name, footerFont, Brushes.White, new Rectangle(0, result.Height - 40, result.Width, 40), footerFormat);
+                }
+                else
+                {
+                    g.DrawImageUnscaled(animFrame, Point.Empty);
+                }
             }
 
             return result;

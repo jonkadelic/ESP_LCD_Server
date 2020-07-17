@@ -28,7 +28,6 @@ namespace ESP_LCD_Server
         private const int lowestTemperature = 0;
 
         public override string Name => "Weather";
-        public override int NotifyDurationMs => 0;
 
         public PageWeather()
         {
@@ -65,12 +64,16 @@ namespace ESP_LCD_Server
             {
                 while (true)
                 {
-                    cachedQuery = weatherApi.Query("Colchester");
+                    try
+                    {
+                        cachedQuery = weatherApi.Query("Colchester");
 
-                    using WebClient webClient = new WebClient();
-                    byte[] data = webClient.DownloadData($"http://openweathermap.org/img/wn/{cachedQuery.Weathers[0].Icon}@2x.png");
-                    using MemoryStream ms = new MemoryStream(data);
-                    weatherIcon = Image.FromStream(ms);
+                        using WebClient webClient = new WebClient();
+                        byte[] data = webClient.DownloadData($"http://openweathermap.org/img/wn/{cachedQuery.Weathers[0].Icon}@2x.png");
+                        using MemoryStream ms = new MemoryStream(data);
+                        weatherIcon = Image.FromStream(ms);
+                    }
+                    catch (Exception) { }
                     Thread.Sleep(updatePeriodMs);
                 }
             });

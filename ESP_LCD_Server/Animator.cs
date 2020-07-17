@@ -16,8 +16,8 @@ namespace ESP_LCD_Server
 
         public bool Complete { get; protected set; }
         public Size FrameSize { get; set; }
-        public virtual int Duration { get; set; }
-        protected float Progress => (float)timerProgress / Duration;
+        public int Duration { get; set; }
+        public float Progress => (float)timerProgress / Duration;
 
         public Animator(int durationMs = default, Size frameSize = default)
         {

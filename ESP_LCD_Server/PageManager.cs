@@ -12,7 +12,7 @@ namespace ESP_LCD_Server
 
         public static AbstractPage CurrentPage { get; private set; }
         public static int PageCount => pages.Count;
-        public delegate void NotifyEventHandler(AbstractPage page);
+        public delegate void NotifyEventHandler(AbstractNotifyingPage page);
         public static event NotifyEventHandler Notify;
         public delegate void PageChangedEventHandler(AbstractPage oldPage, AbstractPage newPage, int pageChangeOffset);
         public static event PageChangedEventHandler PageChanged;
@@ -20,11 +20,14 @@ namespace ESP_LCD_Server
         public static void AddPage(AbstractPage page)
         {
             pages.Add(page);
-            page.Notify += OnNotify;
+            if (page is AbstractNotifyingPage)
+            {
+                (page as AbstractNotifyingPage).Notify += OnNotify;
+            }
             if (CurrentPage == null) CurrentPage = page;
         }
 
-        private static void OnNotify(AbstractPage sender)
+        private static void OnNotify(AbstractNotifyingPage sender)
         {
             NotifyEventHandler handler = Notify;
             handler?.Invoke(sender);

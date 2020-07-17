@@ -13,7 +13,7 @@ using SuperfastBlur;
 
 namespace ESP_LCD_Server
 {
-    public class PageSpotify : AbstractPage
+    public class PageSpotify : AbstractNotifyingPage
     {
         private readonly string clientToken = Secrets.SpotifyClientToken;
         private string accessToken = null;
@@ -113,6 +113,38 @@ namespace ESP_LCD_Server
                 g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.Black, new Rectangle(1, 17, FRAME_WIDTH, 24), stringFormat);
                 g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.White, new Rectangle(0, 16, FRAME_WIDTH, 24), stringFormat);
             }
+
+            return Frame;
+        }
+
+        public override Bitmap RenderNotifyFrame()
+        {
+            string songName, songArtist, songAlbum;
+            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT / 4);
+            Graphics g = Graphics.FromImage(Frame);
+            g.FillRectangle(Brushes.Black, new Rectangle(Point.Empty, Frame.Size));
+
+            if (artImage != null)
+            {
+                g.DrawImage(artImage, new Rectangle(2, 2, Frame.Height - 4, Frame.Height - 4));
+            }
+
+            if (cachedCurrentlyPlaying.Item.Type == ItemType.Track)
+            {
+                FullTrack track = cachedCurrentlyPlaying.Item as FullTrack;
+                songName = track.Name;
+                songArtist = track.Artists[0].Name;
+                songAlbum = track.Album.Name;
+            }
+            else
+            {
+                FullEpisode episode = cachedCurrentlyPlaying.Item as FullEpisode;
+                songName = episode.Name;
+                songArtist = episode.Show.Publisher;
+                songAlbum = episode.Show.Name;
+            }
+
+            g.DrawString($"{songName}\n{songAlbum}\n{songArtist}", smallFont, Brushes.White, new Rectangle(Frame.Height + 4, 0, Frame.Width - (Frame.Height + 4), Frame.Height), stringFormat);
 
             return Frame;
         }

@@ -14,17 +14,7 @@ namespace ESP_LCD_Server
         public const int FRAME_HEIGHT = 160;
         public static Size FrameSize { get; } = new Size(FRAME_WIDTH, FRAME_HEIGHT);
 
-        public event NotifyEventHandler Notify;
-        public delegate void NotifyEventHandler(AbstractPage sender);
-
         public abstract string Name { get; }
-        public abstract int NotifyDurationMs { get; }
-
-        protected void OnNotify()
-        {
-            NotifyEventHandler handler = Notify;
-            handler?.Invoke(this);
-        }
 
         public abstract Bitmap RenderFrame();
 
