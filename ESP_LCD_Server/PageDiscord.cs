@@ -36,37 +36,36 @@ namespace ESP_LCD_Server
             UpdateTask();
         }
 
-        public async override Task RenderFrameAsync()
+        public override Bitmap RenderFrame()
         {
-            Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
-            await Task.Run(() =>
+            DateTime startTime = DateTime.Now;
+            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
+            Graphics g = Graphics.FromImage(Frame);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+            if (lastMessage == null)
             {
-                Graphics g = Graphics.FromImage(Frame);
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
-                if (lastMessage == null)
-                {
-                    g.DrawString("No messages yet :(", headerFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT), new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
-                    ReleaseFrame();
-                    return;
-                }
+                g.DrawString("No messages yet :(", headerFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT), new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                return Frame;
+            }
 
-                g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, FRAME_WIDTH - 38, 20), headerFormat);
-                g.DrawString($"{lastMessage.Author.Username} - {lastMessage.CreatedAt.LocalDateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
-                int attachmentHeight = 0;
-                if (attachment != null)
-                {
-                    attachmentHeight = (int)(((float)FRAME_WIDTH / attachment.Width) * attachment.Height);
-                    g.DrawImage(attachment, new Rectangle(0, 40, FRAME_WIDTH, attachmentHeight));
-                }
-                g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, FRAME_WIDTH, FRAME_HEIGHT - 40));
-                GraphicsPath path = new GraphicsPath();
-                path.AddEllipse(new Rectangle(1, 1, 36, 36));
-                g.SetClip(path);
-                if (authorAvatar != null)
-                    g.DrawImage(authorAvatar, new Rectangle(1, 1, 36, 36));
+            g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, FRAME_WIDTH - 38, 20), headerFormat);
+            g.DrawString($"{lastMessage.Author.Username} - {lastMessage.CreatedAt.LocalDateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
+            int attachmentHeight = 0;
+            if (attachment != null)
+            {
+                attachmentHeight = (int)(((float)FRAME_WIDTH / attachment.Width) * attachment.Height);
+                g.DrawImage(attachment, new Rectangle(0, 40, FRAME_WIDTH, attachmentHeight));
+            }
+            g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, FRAME_WIDTH, FRAME_HEIGHT - 40));
+            GraphicsPath path = new GraphicsPath();
+            path.AddEllipse(new Rectangle(1, 1, 36, 36));
+            g.SetClip(path);
+            if (authorAvatar != null)
+                g.DrawImage(authorAvatar, new Rectangle(1, 1, 36, 36));
 
-                ReleaseFrame();
-            });
+            Console.WriteLine($"Discord rendered in {(int)(DateTime.Now - startTime).TotalMilliseconds}ms.");
+
+            return Frame;
         }
 
         public override Task HandleActionAsync()
@@ -90,7 +89,7 @@ namespace ESP_LCD_Server
 
         private Task Client_MessageReceived(SocketMessage arg)
         {
-            if ((arg.Channel is SocketDMChannel || arg.Channel is SocketGroupChannel || arg.MentionedUsers.Select(x => x.Id).Contains(client.CurrentUser.Id) == true) && (arg.Author.Id != client.CurrentUser.Id))
+            if ((arg.Channel is SocketDMChannel || arg.Channel is SocketGroupChannel || arg.MentionedUsers.Select(x => x.Id).Contains(client.CurrentUser.Id) == true) )//&& (arg.Author.Id != client.CurrentUser.Id))
             {
                 lastMessage = arg;
 

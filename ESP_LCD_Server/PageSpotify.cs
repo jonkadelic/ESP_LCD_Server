@@ -45,79 +45,76 @@ namespace ESP_LCD_Server
         {
             await Task.Run(() =>
             {
-                needsFullRefresh = true;
                 renderArtBig = !renderArtBig;
             });
         }
 
-        public override async Task RenderFrameAsync()
+        public override Bitmap RenderFrame()
         {
-            Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
-            await Task.Run(() =>
+            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
+
+            string songName, songArtist, songAlbum;
+            Graphics g = Graphics.FromImage(Frame);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+
+            if (cachedCurrentlyPlaying == null)
             {
-                string songName, songArtist, songAlbum;
-                Graphics g = Graphics.FromImage(Frame);
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+                g.DrawString("Nothing is playing on Spotify :(", bigFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT), pauseFormat);
+                return Frame;
+            }
 
-                if (cachedCurrentlyPlaying == null)
+            if (renderArtBig)
+            {
+                if (artImage != null)
                 {
-                    g.DrawString("Nothing is playing on Spotify :(", bigFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT), pauseFormat);
-                    ReleaseFrame();
-                    return;
+                    g.DrawImage(artImage, new Rectangle(0, 16, artLargeDims, artLargeDims));
                 }
-
-                if (renderArtBig)
+                if (cachedCurrentlyPlaying.IsPlaying == false)
                 {
-                    if (artImage != null)
-                    {
-                        g.DrawImage(artImage, new Rectangle(0, 16, artLargeDims, artLargeDims));
-                    }
-                    if (cachedCurrentlyPlaying.IsPlaying == false)
-                    {
-                        g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 16, artLargeDims, artLargeDims));
-                        g.DrawString("| |", bigFont, Brushes.White, new Rectangle(0, 16, artLargeDims, artLargeDims), pauseFormat);
-                        g.DrawString("| |", bigFont, Brushes.White, new Rectangle(1, 16, artLargeDims, artLargeDims), pauseFormat);
-                    }
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 16, artLargeDims, artLargeDims));
+                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(0, 16, artLargeDims, artLargeDims), pauseFormat);
+                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(1, 16, artLargeDims, artLargeDims), pauseFormat);
+                }
+            }
+            else
+            {
+                if (artImageBlurred != null)
+                {
+                    g.DrawImage(artImageBlurred, new Rectangle(-16, 0, FRAME_HEIGHT, FRAME_HEIGHT));
+                }
+                g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT));
+
+                if (artImage != null)
+                {
+                    g.DrawImage(artImage, new Rectangle(14, 50, artSmallDims, artSmallDims));
+                }
+                if (cachedCurrentlyPlaying.IsPlaying == false)
+                {
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(14, 50, artSmallDims, artSmallDims));
+                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(14, 50, artSmallDims, artSmallDims), pauseFormat);
+                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(15, 50, artSmallDims, artSmallDims), pauseFormat);
+                }
+                if (cachedCurrentlyPlaying.Item.Type == ItemType.Track)
+                {
+                    FullTrack track = cachedCurrentlyPlaying.Item as FullTrack;
+                    songName = track.Name;
+                    songArtist = track.Artists[0].Name;
+                    songAlbum = track.Album.Name;
                 }
                 else
                 {
-                    if (artImageBlurred != null)
-                    {
-                        g.DrawImage(artImageBlurred, new Rectangle(-16, 0, FRAME_HEIGHT, FRAME_HEIGHT));
-                    }
-                    g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT));
-
-                    if (artImage != null)
-                    {
-                        g.DrawImage(artImage, new Rectangle(14, 50, artSmallDims, artSmallDims));
-                    }
-                    if (cachedCurrentlyPlaying.IsPlaying == false)
-                    {
-                        g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(14, 50, artSmallDims, artSmallDims));
-                        g.DrawString("| |", bigFont, Brushes.White, new Rectangle(14, 50, artSmallDims, artSmallDims), pauseFormat);
-                        g.DrawString("| |", bigFont, Brushes.White, new Rectangle(15, 50, artSmallDims, artSmallDims), pauseFormat);
-                    }
-                    if (cachedCurrentlyPlaying.Item.Type == ItemType.Track)
-                    {
-                        FullTrack track = cachedCurrentlyPlaying.Item as FullTrack;
-                        songName = track.Name;
-                        songArtist = track.Artists[0].Name;
-                        songAlbum = track.Album.Name;
-                    }
-                    else
-                    {
-                        FullEpisode episode = cachedCurrentlyPlaying.Item as FullEpisode;
-                        songName = episode.Name;
-                        songArtist = episode.Show.Publisher;
-                        songAlbum = episode.Show.Name;
-                    }
-                    g.DrawString($"{songName}", bigFont, Brushes.Black, new Rectangle(1, 1, FRAME_WIDTH, 16), stringFormat);
-                    g.DrawString($"{songName}", bigFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, 16), stringFormat);
-                    g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.Black, new Rectangle(1, 17, FRAME_WIDTH, 24), stringFormat);
-                    g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.White, new Rectangle(0, 16, FRAME_WIDTH, 24), stringFormat);
+                    FullEpisode episode = cachedCurrentlyPlaying.Item as FullEpisode;
+                    songName = episode.Name;
+                    songArtist = episode.Show.Publisher;
+                    songAlbum = episode.Show.Name;
                 }
-                ReleaseFrame();
-            });
+                g.DrawString($"{songName}", bigFont, Brushes.Black, new Rectangle(1, 1, FRAME_WIDTH, 16), stringFormat);
+                g.DrawString($"{songName}", bigFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, 16), stringFormat);
+                g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.Black, new Rectangle(1, 17, FRAME_WIDTH, 24), stringFormat);
+                g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.White, new Rectangle(0, 16, FRAME_WIDTH, 24), stringFormat);
+            }
+
+            return Frame;
         }
 
         private async void UpdateTask()
@@ -152,7 +149,6 @@ namespace ESP_LCD_Server
                 }
             }
             cachedCurrentlyPlaying = newCurrentlyPlaying;
-            needsFullRefresh = true;
 
             string artUrl = (cachedCurrentlyPlaying.Item.Type == ItemType.Track) ? ((FullTrack)cachedCurrentlyPlaying.Item).Album.Images[0].Url : ((FullEpisode)cachedCurrentlyPlaying.Item).Show.Images[0].Url;
 

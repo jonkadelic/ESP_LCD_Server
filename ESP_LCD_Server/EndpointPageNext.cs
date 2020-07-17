@@ -11,7 +11,7 @@ namespace ESP_LCD_Server
 
         public string Endpoint => "page_next";
 
-        public byte[] GetResponseBody(HttpListenerRequest request)
+        public byte[] GetResponseBody(string request)
         {
             PageManager.NextPage();
 

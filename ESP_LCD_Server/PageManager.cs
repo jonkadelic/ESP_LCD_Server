@@ -9,15 +9,13 @@ namespace ESP_LCD_Server
     public static class PageManager
     {
         private static List<AbstractPage> pages = new List<AbstractPage>();
-        private const int PAGE_REDRAW_INTERVAL_MS = 250;
+
         public static AbstractPage CurrentPage { get; private set; }
+        public static int PageCount => pages.Count;
         public delegate void NotifyEventHandler(AbstractPage page);
         public static event NotifyEventHandler Notify;
-
-        public static void Run()
-        {
-            RenderPagesTaskAsync().ConfigureAwait(false);
-        }
+        public delegate void PageChangedEventHandler(AbstractPage oldPage, AbstractPage newPage, int pageChangeOffset);
+        public static event PageChangedEventHandler PageChanged;
 
         public static void AddPage(AbstractPage page)
         {
@@ -35,27 +33,27 @@ namespace ESP_LCD_Server
         public static void NextPage() => OffsetPage(1);
         public static void LastPage() => OffsetPage(-1);
         public static void Action() => CurrentPage.HandleActionAsync().ConfigureAwait(false);
+        public static AbstractPage GetPage(int pageIndex) => pages[pageIndex];
 
         private static void OffsetPage(int offset)
         {
             if (CurrentPage == null) return;
+            if (offset == 0) return;
 
-            CurrentPage = pages[(pages.IndexOf(CurrentPage) + offset) % pages.Count];
+            int newPageIndex = (pages.IndexOf(CurrentPage) + offset) % pages.Count;
+            if (newPageIndex < 0) newPageIndex += pages.Count;
+
+            AbstractPage oldPage = CurrentPage;
+            AbstractPage newPage = pages[newPageIndex];
+
+
+            PageChangedEventHandler handler = PageChanged;
+            handler?.Invoke(oldPage, newPage, offset);
+
+            CurrentPage = newPage;
+
         }
 
-        private static async Task RenderPagesTaskAsync()
-        {
-            await Task.Run(() =>
-            {
-                while (true)
-                {
-                    foreach (AbstractPage page in pages)
-                    {
-                        page.RenderFrameAsync();
-                    }
-                    Thread.Sleep(PAGE_REDRAW_INTERVAL_MS);
-                }
-            });
-        }
+
     }
 }

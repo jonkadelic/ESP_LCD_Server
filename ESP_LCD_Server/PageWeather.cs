@@ -36,25 +36,22 @@ namespace ESP_LCD_Server
             UpdateTask();
         }
 
-        public override async Task RenderFrameAsync()
+        public override Bitmap RenderFrame()
         {
-            Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
-            await Task.Run(() =>
-            {
-                if (cachedQuery == null || weatherIcon == null) return;
-                Graphics g = Graphics.FromImage(Frame);
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
-                string temperature = $"{(int)cachedQuery.Main.Temperature.CelsiusCurrent}";
-                SizeF temperatureStringMeasurement = g.MeasureString(temperature, temperatureFont);
-                Brush temperatureBrush = new SolidBrush(GetTemperatureColour((int)cachedQuery.Main.Temperature.CelsiusCurrent));
-                g.DrawString(cachedQuery.Name, smallFont, Brushes.White, 3, 1);
-                g.DrawString(temperature, temperatureFont, temperatureBrush, -6, 12);
-                g.DrawString("°C", unitsFont, temperatureBrush, temperatureStringMeasurement.Width - 15, 14);
-                g.DrawImage(weatherIcon, 80, 12, 40, 40);
-                g.DrawString(cachedQuery.Weathers[0].Description, medFont, Brushes.White, new Rectangle(0, 54, FRAME_WIDTH, 16), new StringFormat() { Alignment = StringAlignment.Center });
-                g.DrawString($"High:\t{(int)cachedQuery.Main.Temperature.CelsiusMaximum}°C\nLow:\t{(int)cachedQuery.Main.Temperature.CelsiusMinimum}°C\nSunrise:\t{cachedQuery.Sys.Sunrise.ToShortTimeString()}\nSunset:\t{cachedQuery.Sys.Sunset.ToShortTimeString()}\nWind:\t{(int)(cachedQuery.Wind.SpeedFeetPerSecond / 1.467)}mph", smallFont, Brushes.White, 3, 85);
-                ReleaseFrame();
-            });
+            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
+            if (cachedQuery == null || weatherIcon == null) return Frame;
+            Graphics g = Graphics.FromImage(Frame);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+            string temperature = $"{(int)cachedQuery.Main.Temperature.CelsiusCurrent}";
+            SizeF temperatureStringMeasurement = g.MeasureString(temperature, temperatureFont);
+            Brush temperatureBrush = new SolidBrush(GetTemperatureColour((int)cachedQuery.Main.Temperature.CelsiusCurrent));
+            g.DrawString(cachedQuery.Name, smallFont, Brushes.White, 3, 1);
+            g.DrawString(temperature, temperatureFont, temperatureBrush, -6, 12);
+            g.DrawString("°C", unitsFont, temperatureBrush, temperatureStringMeasurement.Width - 15, 14);
+            g.DrawImage(weatherIcon, 80, 12, 40, 40);
+            g.DrawString(cachedQuery.Weathers[0].Description, medFont, Brushes.White, new Rectangle(0, 54, FRAME_WIDTH, 16), new StringFormat() { Alignment = StringAlignment.Center });
+            g.DrawString($"High:\t{(int)cachedQuery.Main.Temperature.CelsiusMaximum}°C\nLow:\t{(int)cachedQuery.Main.Temperature.CelsiusMinimum}°C\nSunrise:\t{cachedQuery.Sys.Sunrise.ToShortTimeString()}\nSunset:\t{cachedQuery.Sys.Sunset.ToShortTimeString()}\nWind:\t{(int)(cachedQuery.Wind.SpeedFeetPerSecond / 1.467)}mph", smallFont, Brushes.White, 3, 85);
+            return Frame;
         }
 
         public override Task HandleActionAsync()

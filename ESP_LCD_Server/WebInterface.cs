@@ -4,18 +4,17 @@ using System.Text;
 using System.Net;
 using System.Linq;
 using System.Threading;
+using System.Net.Sockets;
 
 namespace ESP_LCD_Server
 {
     public static class WebInterface
     {
         // Variables
-        private static HttpListener listener = new HttpListener();
-        private static Thread listenerThread;
-        private const string baseUrl = "http://+:80";
+        private const int PORT = 4567;
+        private const int UDP_PACKET_SIZE = 1450; // max = 1472
 
         // Properties
-        public static bool IsRunning { get; private set; }
         public static List<IWebInterfaceEndpoint> Endpoints { get; } = new List<IWebInterfaceEndpoint>();
 
         // Functions
@@ -25,32 +24,31 @@ namespace ESP_LCD_Server
             {
                 throw new Exception("Endpoint is already in use!");
             }
-            else if (IsRunning)
-            {
-                throw new Exception("Web Interface is already running!");
-            }
             else
             {
                 Endpoints.Add(endpoint);
-                listener.Prefixes.Add($"{baseUrl}/{endpoint.Endpoint}/");
             }
         }
 
         public static void Run()
         {
-            listener.Start();
-
-            listenerThread = new Thread(Task_Listen);
-            listenerThread.Start();
-            IsRunning = true;
+            new Thread(Task_Listen).Start();
         }
 
         private static void Task_Listen()
         {
+            byte[] dataBuffer;
+            IPEndPoint ipep = new IPEndPoint(IPAddress.Any, PORT);
+            UdpClient client = new UdpClient(ipep);
+
+            IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
+
             while (true)
             {
-                HttpListenerContext context = listener.GetContext();
-                string targetEndpoint = context.Request.Url.Segments[1].Replace("/", "");
+                dataBuffer = client.Receive(ref sender);
+                string targetEndpoint = Encoding.ASCII.GetString(dataBuffer);
+                Console.WriteLine($"Received UDP endpoint request {targetEndpoint}.");
+                DateTime startTime = DateTime.Now;
                 IWebInterfaceEndpoint validEndpoint = null;
                 foreach (IWebInterfaceEndpoint endpoint in Endpoints)
                 {
@@ -63,25 +61,34 @@ namespace ESP_LCD_Server
                 if (validEndpoint == null)
                 {
                     // No appropriate endpoint to respond with
-                    context.Response.StatusCode = 404;
-                    context.Response.ContentLength64 = 0;
+                    byte[] response = Encoding.ASCII.GetBytes("Failure");
+                    client.Send(response, response.Length, sender);
                 }
                 else
                 {
-                    Console.WriteLine($"Valid request from {context.Request.Url}.");
                     // Found appropriate endpoint
-                    byte[] output = validEndpoint.GetResponseBody(context.Request);
-                    context.Response.StatusCode = 200;
-                    context.Response.ContentLength64 = output.Length;
-                    try
-                    {
-                        context.Response.OutputStream.Write(output, 0, output.Length);
-                        Console.WriteLine($"Wrote response for {context.Request.Url}.");
-                    }
-                    catch (Exception) { }
+                    DateTime responseStartTime = DateTime.Now;
+                    byte[] output = validEndpoint.GetResponseBody(targetEndpoint);
+                    TimeSpan responseTime = DateTime.Now - responseStartTime;
 
+                    Console.WriteLine($"Replying with {output.Length} bytes of data to {sender.Address}:{sender.Port}.");
+
+                    if (output.Length <= UDP_PACKET_SIZE)
+                    {
+                        client.Send(output, output.Length, sender);
+                    }
+                    else
+                    {
+                        int i;
+                        for (i = 0; i < output.Length / UDP_PACKET_SIZE; i++)
+                        {
+                            client.Send(output[(i * UDP_PACKET_SIZE)..], UDP_PACKET_SIZE, sender);
+                        }
+                        client.Send(output[(i * UDP_PACKET_SIZE)..], output.Length - (i * UDP_PACKET_SIZE), sender);
+                    }
+
+                    Console.WriteLine($"Took {(int)(DateTime.Now - startTime).TotalMilliseconds}ms to respond to \"{targetEndpoint}\" ({(int)responseTime.TotalMilliseconds}ms to generate body).");
                 }
-                context.Response.Close();
             }
         }
     }

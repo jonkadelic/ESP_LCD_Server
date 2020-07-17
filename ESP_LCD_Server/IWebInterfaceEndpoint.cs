@@ -13,6 +13,6 @@ namespace ESP_LCD_Server
         public string Endpoint { get; }
 
         // Functions
-        public byte[] GetResponseBody(HttpListenerRequest request);
+        public byte[] GetResponseBody(string request);
     }
 }

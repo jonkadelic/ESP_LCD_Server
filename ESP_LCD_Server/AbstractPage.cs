@@ -10,40 +10,15 @@ namespace ESP_LCD_Server
     public abstract class AbstractPage
     {
         protected const int BYTES_PER_PIXEL = 3;
-        protected const int FRAME_WIDTH = 128;
-        protected const int FRAME_HEIGHT = 160;
-        protected bool needsFullRefresh = false;
-        protected bool frameInUse = false;
+        public const int FRAME_WIDTH = 128;
+        public const int FRAME_HEIGHT = 160;
+        public static Size FrameSize { get; } = new Size(FRAME_WIDTH, FRAME_HEIGHT);
 
         public event NotifyEventHandler Notify;
         public delegate void NotifyEventHandler(AbstractPage sender);
 
         public abstract string Name { get; }
         public abstract int NotifyDurationMs { get; }
-        private Bitmap _frame;
-        public Bitmap Frame
-        {
-            get
-            {
-                while (frameInUse) ;
-                //Console.WriteLine($"Took hold of frame in {GetType().Name}.");
-                frameInUse = true;
-                return _frame;
-            }
-            protected set
-            {
-                while (frameInUse) ;
-                frameInUse = true;
-                _frame = value;
-                frameInUse = false;
-            }
-        }
-
-        public void ReleaseFrame()
-        {
-            //Console.WriteLine($"Released frame in {GetType().Name}.");
-            frameInUse = false;
-        }
 
         protected void OnNotify()
         {
@@ -51,7 +26,7 @@ namespace ESP_LCD_Server
             handler?.Invoke(this);
         }
 
-        public abstract Task RenderFrameAsync();
+        public abstract Bitmap RenderFrame();
 
         public abstract Task HandleActionAsync();
     }

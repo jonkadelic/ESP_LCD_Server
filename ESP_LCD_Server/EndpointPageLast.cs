@@ -5,15 +5,15 @@ using System.Text;
 
 namespace ESP_LCD_Server
 {
-    public class EndpointPageAction : IWebInterfaceEndpoint
+    public class EndpointPageLast : IWebInterfaceEndpoint
     {
-        public string Name => "Page Action";
+        public string Name => "Last Page";
 
-        public string Endpoint => "page_action";
+        public string Endpoint => "page_last";
 
         public byte[] GetResponseBody(string request)
         {
-            PageManager.Action();
+            PageManager.LastPage();
 
             return Encoding.ASCII.GetBytes("Success");
         }
