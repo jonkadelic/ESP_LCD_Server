@@ -6,20 +6,25 @@ using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
 using System.Diagnostics;
+using ESP_LCD_Server.Endpoints;
 
 namespace ESP_LCD_Server
 {
-    public static class WebInterface
+    public static class UdpInterface
     {
-        // Variables
         private const int PORT = 4567;
         private const int UDP_PACKET_SIZE = 1450; // max = 1472
 
-        // Properties
-        public static List<IWebInterfaceEndpoint> Endpoints { get; } = new List<IWebInterfaceEndpoint>();
+        /// <summary>
+        /// Endpoints in use by the UDP interface.
+        /// </summary>
+        public static List<IEndpoint> Endpoints { get; } = new List<IEndpoint>();
 
-        // Functions
-        public static void AddEndpoint(IWebInterfaceEndpoint endpoint)
+        /// <summary>
+        /// Registers an endpoint with the UDP interface.
+        /// </summary>
+        /// <param name="endpoint">Endpoint to register.</param>
+        public static void AddEndpoint(IEndpoint endpoint)
         {
             if (Endpoints.Select((x) => x.Endpoint).Contains(endpoint.Endpoint))
             {
@@ -31,11 +36,17 @@ namespace ESP_LCD_Server
             }
         }
 
+        /// <summary>
+        /// Starts the UDP interface running.
+        /// </summary>
         public static void Run()
         {
             new Thread(Task_Listen).Start();
         }
 
+        /// <summary>
+        /// Listener task that waits for incoming UDP traffic, then responds using a given endpoint handler.
+        /// </summary>
         private static void Task_Listen()
         {
             byte[] dataBuffer;
@@ -50,8 +61,8 @@ namespace ESP_LCD_Server
                 string targetEndpoint = Encoding.ASCII.GetString(dataBuffer);
                 Debug.WriteLine($"Received UDP endpoint request {targetEndpoint}.");
                 DateTime startTime = DateTime.Now;
-                IWebInterfaceEndpoint validEndpoint = null;
-                foreach (IWebInterfaceEndpoint endpoint in Endpoints)
+                IEndpoint validEndpoint = null;
+                foreach (IEndpoint endpoint in Endpoints)
                 {
                     if (targetEndpoint == endpoint.Endpoint)
                     {

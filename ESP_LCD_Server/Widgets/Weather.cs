@@ -1,20 +1,16 @@
-﻿
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenWeatherAPI;
 
-namespace ESP_LCD_Server
+namespace ESP_LCD_Server.Widgets
 {
-    public class PageWeather : AbstractPage
+    public class Weather : BaseWidget
     {
-        private API weatherApi;
+        private readonly API weatherApi;
         private Query cachedQuery = null;
         private const int updatePeriodMs = 30000000;
         private Image weatherIcon = null;
@@ -29,7 +25,7 @@ namespace ESP_LCD_Server
 
         public override string Name => "Weather";
 
-        public PageWeather()
+        public Weather()
         {
             weatherApi = new API(Secrets.WeatherToken);
             UpdateTask();
@@ -37,9 +33,10 @@ namespace ESP_LCD_Server
 
         public override Bitmap RenderFrame()
         {
-            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
+            Bitmap Frame = new Bitmap(FrameSize.Width, FrameSize.Height);
             if (cachedQuery == null || weatherIcon == null) return Frame;
             Graphics g = Graphics.FromImage(Frame);
+            g.FillRectangle(Brushes.Black, new Rectangle(Point.Empty, Frame.Size));
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
             string temperature = $"{(int)cachedQuery.Main.Temperature.CelsiusCurrent}";
             SizeF temperatureStringMeasurement = g.MeasureString(temperature, temperatureFont);
@@ -48,7 +45,7 @@ namespace ESP_LCD_Server
             g.DrawString(temperature, temperatureFont, temperatureBrush, -6, 12);
             g.DrawString("°C", unitsFont, temperatureBrush, temperatureStringMeasurement.Width - 15, 14);
             g.DrawImage(weatherIcon, 80, 12, 40, 40);
-            g.DrawString(cachedQuery.Weathers[0].Description, medFont, Brushes.White, new Rectangle(0, 54, FRAME_WIDTH, 16), new StringFormat() { Alignment = StringAlignment.Center });
+            g.DrawString(cachedQuery.Weathers[0].Description, medFont, Brushes.White, new Rectangle(0, 54, FrameSize.Width, 16), new StringFormat() { Alignment = StringAlignment.Center });
             g.DrawString($"High:\t{(int)cachedQuery.Main.Temperature.CelsiusMaximum}°C\nLow:\t{(int)cachedQuery.Main.Temperature.CelsiusMinimum}°C\nSunrise:\t{cachedQuery.Sys.Sunrise.ToShortTimeString()}\nSunset:\t{cachedQuery.Sys.Sunset.ToShortTimeString()}\nWind:\t{(int)(cachedQuery.Wind.SpeedFeetPerSecond / 1.467)}mph", smallFont, Brushes.White, 3, 85);
             return Frame;
         }
@@ -58,6 +55,9 @@ namespace ESP_LCD_Server
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Updates weather info at regular intervals.
+        /// </summary>
         private async void UpdateTask()
         {
             await Task.Run(() =>
@@ -79,6 +79,11 @@ namespace ESP_LCD_Server
             });
         }
 
+        /// <summary>
+        /// Fetches a colour representing a temperature.
+        /// </summary>
+        /// <param name="temperature">Current temperature in degrees Celsius.</param>
+        /// <returns>Colour representing the given temperature.</returns>
         private Color GetTemperatureColour(int temperature)
         {
             int temperatureRange = highestTemperature - lowestTemperature;

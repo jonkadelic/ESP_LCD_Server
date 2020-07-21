@@ -1,80 +1,63 @@
 ﻿using Discord.WebSocket;
-using Microsoft.VisualBasic;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace ESP_LCD_Server
+namespace ESP_LCD_Server.Widgets
 {
-    public class PageDiscord : AbstractNotifyingPage
+    public class DiscordMessages : BaseNotifyingWidget
     {
         private DiscordSocketClient client;
-        private SocketMessage lastMessage = null;
-        private string lastMessageContent = null;
+        private SocketMessage lastMessage = default;
+        private string lastMessageContent = default;
+        private string lastMessageNickname = default;
         private readonly Font headerFont = new Font("Segoe UI Emoji", 10);
         private readonly StringFormat headerFormat = new StringFormat() { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         private readonly Font nameTimeFont = new Font("Segoe UI Emoji", 8, FontStyle.Bold);
         private readonly Font messageFont = new Font("Segoe UI Emoji", 8);
-        private Image authorAvatar = null;
-        private Image attachment = null;
+        private Bitmap authorAvatar = null;
+        private Bitmap attachment = null;
 
         public override string Name => "Discord";
         public override int NotifyDurationMs => 5000;
 
 
-        public PageDiscord()
+        public DiscordMessages()
         {
             client = new DiscordSocketClient();
-            UpdateTask();
+
+            client.MessageReceived += Client_MessageReceived;
+            client.Log += Client_Log;
+            client.LoginAsync(0, Secrets.DiscordToken);
+            client.StartAsync();
         }
 
         public override Bitmap RenderFrame()
         {
-            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT);
+            Bitmap Frame = new Bitmap(FrameSize.Width, FrameSize.Height);
             using Graphics g = Graphics.FromImage(Frame);
+            g.FillRectangle(Brushes.Black, new Rectangle(Point.Empty, FrameSize));
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
             if (lastMessage == null)
             {
-                g.DrawString("No messages yet :(", headerFont, Brushes.White, new Rectangle(0, 0, FRAME_WIDTH, FRAME_HEIGHT), new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                g.DrawString("No messages yet :(", headerFont, Brushes.White, new Rectangle(Point.Empty, FrameSize), new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
                 return Frame;
             }
 
-            g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, FRAME_WIDTH - 38, 20), headerFormat);
+            g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, FrameSize.Width - 38, 20), headerFormat);
             g.DrawString($"{lastMessage.Author.Username} - {lastMessage.CreatedAt.LocalDateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
             int attachmentHeight = 0;
             if (attachment != null)
             {
-                attachmentHeight = (int)(((float)FRAME_WIDTH / attachment.Width) * attachment.Height);
-                g.DrawImage(attachment, new Rectangle(0, 40, FRAME_WIDTH, attachmentHeight));
+                attachmentHeight = (int)(((float)FrameSize.Width / attachment.Width) * attachment.Height);
+                g.DrawImage(attachment, new Rectangle(0, 40, FrameSize.Width, attachmentHeight));
             }
-            g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, FRAME_WIDTH, FRAME_HEIGHT - 40));
-            GraphicsPath path = new GraphicsPath();
-            path.AddEllipse(new Rectangle(1, 1, 36, 36));
-            g.SetClip(path);
-            if (authorAvatar != null)
-                g.DrawImage(authorAvatar, new Rectangle(1, 1, 36, 36));
-
-            return Frame;
-        }
-
-        public override Bitmap RenderNotifyFrame()
-        {
-            Bitmap Frame = new Bitmap(FRAME_WIDTH, FRAME_HEIGHT / 3);
-            using Graphics g = Graphics.FromImage(Frame);
-            g.FillRectangle(Brushes.Black, new Rectangle(Point.Empty, Frame.Size));
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
-            g.DrawString($"{lastMessage.Author.Username}", nameTimeFont, Brushes.White, 40, 0);
-
-            g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(40, 12, Frame.Width - 40, Frame.Height - 12));
-
+            g.DrawString(lastMessageContent, messageFont, Brushes.White, new Rectangle(0, 40 + attachmentHeight, FrameSize.Width, FrameSize.Height - 40));
             GraphicsPath path = new GraphicsPath();
             path.AddEllipse(new Rectangle(1, 1, 36, 36));
             g.SetClip(path);
@@ -89,23 +72,25 @@ namespace ESP_LCD_Server
             return Task.CompletedTask;
         }
 
-        private async void UpdateTask()
-        {
-            client.MessageReceived += Client_MessageReceived;
-            client.Log += Client_Log;
-            await client.LoginAsync(0, Secrets.DiscordToken);
-            await client.StartAsync();
-        }
-
+        /// <summary>
+        /// Log Discord.NET library data to the console.
+        /// </summary>
+        /// <param name="arg">Log message to write.</param>
+        /// <returns>Task status.</returns>
         private Task Client_Log(Discord.LogMessage arg)
         {
             Console.WriteLine(arg.ToString());
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Handle incoming messages from Discord.NET.
+        /// </summary>
+        /// <param name="arg">SocketMessage to handle.</param>
+        /// <returns>Task status.</returns>
         private Task Client_MessageReceived(SocketMessage arg)
         {
-            if ((arg.Channel is SocketDMChannel || arg.Channel is SocketGroupChannel || arg.MentionedUsers.Select(x => x.Id).Contains(client.CurrentUser.Id) == true) )//&& (arg.Author.Id != client.CurrentUser.Id))
+            if ((arg.Channel is SocketDMChannel || arg.Channel is SocketGroupChannel || arg.MentionedUsers.Select(x => x.Id).Contains(client.CurrentUser.Id) == true) && (arg.Author.Id != client.CurrentUser.Id))
             {
                 lastMessage = arg;
 
@@ -133,20 +118,22 @@ namespace ESP_LCD_Server
                 }
                 byte[] data = webClient.DownloadData(url);
                 using MemoryStream ms = new MemoryStream(data);
-                authorAvatar = Image.FromStream(ms);
+                authorAvatar = (Bitmap)Image.FromStream(ms);
 
                 if (arg.Attachments.Count > 0)
                 {
                     data = webClient.DownloadData(arg.Attachments.First().Url);
                     using MemoryStream ms2 = new MemoryStream(data);
-                    attachment = Image.FromStream(ms2);
+                    attachment = (Bitmap)Image.FromStream(ms2);
                 }
                 else
                 {
                     attachment = null;
                 }
 
-                OnNotify();
+                Notification notif = new Notification(lastMessageContent, this, authorAvatar, Notification.ICON_STYLE.ROUND, NotifyDurationMs, lastMessage.Author.Username);
+
+                OnNotify(notif);
             }
             return Task.CompletedTask;
         }

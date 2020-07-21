@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "ESP_LCD_Server": {
+      "commandName": "Project"
+    },
+    "ESP_LCD_Server Watch": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "workingDirectory": "$(ProjectDir)",
+      "commandLineArgs": "watch run"
+    }
+  }
+}
