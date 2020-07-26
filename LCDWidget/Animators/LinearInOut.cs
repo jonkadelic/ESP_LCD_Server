@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace ESP_LCD_Server.Animators
+namespace LCDWidget.Animators
 {
     public class LinearInOut : AbstractAnimator
     {

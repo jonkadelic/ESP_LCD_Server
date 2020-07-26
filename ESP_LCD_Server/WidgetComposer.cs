@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using LCDWidget;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
@@ -11,24 +12,24 @@ namespace ESP_LCD_Server
         private const int FOOTER_DURATION_MS = 2000;
         private const int FOOTER_INOUT_ANIM_DURATION_MS = 100;
 
-        private static Animators.LinearInOut notifyAnimator = new Animators.LinearInOut(inDurationMs: NOTIFY_INOUT_ANIM_DURATION_MS,
+        private static LCDWidget.Animators.LinearInOut notifyAnimator = new LCDWidget.Animators.LinearInOut(inDurationMs: NOTIFY_INOUT_ANIM_DURATION_MS,
                                                                                     outDurationMs: NOTIFY_INOUT_ANIM_DURATION_MS,
-                                                                                    frameSize: Widgets.BaseWidget.FrameSize,
-                                                                                    startPos: new Point(0, -Widgets.BaseWidget.FrameSize.Width),
+                                                                                    frameSize: BaseWidget.FrameSize,
+                                                                                    startPos: new Point(0, -BaseWidget.FrameSize.Width),
                                                                                     endPos: new Point(0, 0));
-        private static Animators.LinearInOut footerAnimator = new Animators.LinearInOut(inDurationMs: FOOTER_INOUT_ANIM_DURATION_MS,
+        private static LCDWidget.Animators.LinearInOut footerAnimator = new LCDWidget.Animators.LinearInOut(inDurationMs: FOOTER_INOUT_ANIM_DURATION_MS,
                                                                                     holdDurationMs: FOOTER_DURATION_MS,
                                                                                     outDurationMs: FOOTER_INOUT_ANIM_DURATION_MS,
-                                                                                    frameSize: Widgets.BaseWidget.FrameSize,
-                                                                                    startPos: new Point(0, Widgets.BaseWidget.FrameSize.Height),
-                                                                                    endPos: new Point(0, Widgets.BaseWidget.FrameSize.Height - 20));
-        private static Animators.Linear oldWidgetAnimator = new Animators.Linear(durationMs: WIDGET_TRANSITION_DURATION_MS, frameSize: Widgets.BaseWidget.FrameSize);
-        private static Animators.Linear newWidgetAnimator = new Animators.Linear(durationMs: WIDGET_TRANSITION_DURATION_MS, frameSize: Widgets.BaseWidget.FrameSize);
+                                                                                    frameSize: BaseWidget.FrameSize,
+                                                                                    startPos: new Point(0, BaseWidget.FrameSize.Height),
+                                                                                    endPos: new Point(0, BaseWidget.FrameSize.Height - 20));
+        private static LCDWidget.Animators.Linear oldWidgetAnimator = new LCDWidget.Animators.Linear(durationMs: WIDGET_TRANSITION_DURATION_MS, frameSize: BaseWidget.FrameSize);
+        private static LCDWidget.Animators.Linear newWidgetAnimator = new LCDWidget.Animators.Linear(durationMs: WIDGET_TRANSITION_DURATION_MS, frameSize: BaseWidget.FrameSize);
 
         private static Font footerFont = new Font(FontFamily.GenericSansSerif, 8);
         private static StringFormat footerFormat = new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
-        private static List<Animators.AbstractAnimator> animators = new List<Animators.AbstractAnimator>() { oldWidgetAnimator, newWidgetAnimator, notifyAnimator, footerAnimator };
+        private static List<LCDWidget.Animators.AbstractAnimator> animators = new List<LCDWidget.Animators.AbstractAnimator>() { oldWidgetAnimator, newWidgetAnimator, notifyAnimator, footerAnimator };
 
         static WidgetComposer()
         {
@@ -51,19 +52,19 @@ namespace ESP_LCD_Server
         /// <param name="oldWidget">Previous active widget.</param>
         /// <param name="newWidget">New active widget.</param>
         /// <param name="offset">Direction the active widget changed in.</param>
-        private static void WidgetManager_WidgetChanged(Widgets.BaseWidget oldWidget, Widgets.BaseWidget newWidget, int offset)
+        private static void WidgetManager_WidgetChanged(BaseWidget oldWidget, BaseWidget newWidget, int offset)
         {
             oldWidgetAnimator.Image = oldWidget.RenderFrame();
             newWidgetAnimator.Image = newWidget.RenderFrame();
             if (offset >= 0)
             {
-                oldWidgetAnimator.EndPos = new Point(-Widgets.BaseWidget.FrameSize.Width, 0);
-                newWidgetAnimator.StartPos = new Point(Widgets.BaseWidget.FrameSize.Width, 0);
+                oldWidgetAnimator.EndPos = new Point(-BaseWidget.FrameSize.Width, 0);
+                newWidgetAnimator.StartPos = new Point(BaseWidget.FrameSize.Width, 0);
             }
             else
             {
-                oldWidgetAnimator.EndPos = new Point(Widgets.BaseWidget.FrameSize.Width, 0);
-                newWidgetAnimator.StartPos = new Point(-Widgets.BaseWidget.FrameSize.Width, 0);
+                oldWidgetAnimator.EndPos = new Point(BaseWidget.FrameSize.Width, 0);
+                newWidgetAnimator.StartPos = new Point(-BaseWidget.FrameSize.Width, 0);
             }
             oldWidgetAnimator.StartPos = newWidgetAnimator.EndPos = Point.Empty;
 
@@ -81,7 +82,7 @@ namespace ESP_LCD_Server
         /// <param name="holdMs">Duration to hold the footer in place.</param>
         private static void StartFooter(string message, int inoutMs, int holdMs)
         {
-            Bitmap footerBitmap = new Bitmap(Widgets.BaseWidget.FrameSize.Width, 20);
+            Bitmap footerBitmap = new Bitmap(BaseWidget.FrameSize.Width, 20);
             using Graphics g = Graphics.FromImage(footerBitmap);
             g.FillRectangle(new LinearGradientBrush(Point.Empty, new Point(0, footerBitmap.Height), Color.Transparent, Color.Black), new Rectangle(Point.Empty, footerBitmap.Size));
             g.DrawString(message, footerFont, Brushes.Black, new Rectangle(new Point(1, 1), footerBitmap.Size), footerFormat);
@@ -101,7 +102,7 @@ namespace ESP_LCD_Server
         {
             if (notification.Origin == WidgetManager.CurrentWidget) return;
             notifyAnimator.HoldDuration = notification.DisplayTime;
-            notifyAnimator.Image = Notification.RenderNotification(notification);
+            notifyAnimator.Image = NotificationRenderer.RenderNotification(notification);
             notifyAnimator.Start();
             StartFooter(notification.Origin.Name, NOTIFY_INOUT_ANIM_DURATION_MS, notifyAnimator.HoldDuration);
         }
@@ -116,7 +117,7 @@ namespace ESP_LCD_Server
 
             using Graphics g = Graphics.FromImage(result);
 
-            foreach (Animators.AbstractAnimator animator in animators)
+            foreach (LCDWidget.Animators.AbstractAnimator animator in animators)
             {
                 if (animator.Complete == true) continue;
                 g.DrawImageUnscaled(animator.RenderFrame(), Point.Empty);

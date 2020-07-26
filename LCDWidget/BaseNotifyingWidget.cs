@@ -1,14 +1,34 @@
-﻿using ESP_LCD_Server.Widgets;
-using System.Drawing;
-using System.Drawing.Drawing2D;
+﻿using System.Drawing;
 
-namespace ESP_LCD_Server
+namespace LCDWidget
 {
+    public abstract class BaseNotifyingWidget : BaseWidget
+    {
+        /// <summary>
+        /// Event that triggers a notification to be displayed.
+        /// </summary>
+        public event NotifyEventHandler Notify;
+        public delegate void NotifyEventHandler(Notification notification);
+
+        /// <summary>
+        /// Duration the notification is held on screen.
+        /// </summary>
+        public abstract int NotifyDurationMs { get; }
+
+        /// <summary>
+        /// Dispatches a notification.
+        /// </summary>
+        protected void OnNotify(Notification notification)
+        {
+            Logger.Log($"Raising notification.", GetType());
+            NotifyEventHandler handler = Notify;
+            handler?.Invoke(notification);
+        }
+    }
+
     public class Notification
     {
         private const int DEFAULT_DISPLAY_TIME_MS = 3000;
-        private static readonly Font headerFont = new Font("Segoe UI Emoji", 8, FontStyle.Bold);
-        private static readonly Font bodyFont = new Font("Segoe UI Emoji", 8);
 
         /// <summary>
         /// Represents the method used to draw the icon.
@@ -68,29 +88,5 @@ namespace ESP_LCD_Server
             DisplayTime = displayTime;
             Header = header;
         }
-
-        public static Bitmap RenderNotification(Notification notification)
-        {
-            using Graphics tempG = Graphics.FromImage(new Bitmap(1, 1));
-            int stringHeight = (int)tempG.MeasureString(notification.Body, bodyFont, BaseWidget.FrameSize.Width - 40).Height;
-            if (stringHeight > BaseWidget.FrameSize.Height - 16) stringHeight = BaseWidget.FrameSize.Height - 16;
-            else if (stringHeight + 16 < 38) stringHeight = 22;
-            Bitmap Frame = new Bitmap(BaseWidget.FrameSize.Height, stringHeight + 16);
-            using Graphics g = Graphics.FromImage(Frame);
-            g.FillRectangle(Brushes.Black, new Rectangle(Point.Empty, Frame.Size));
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
-            g.DrawString(notification.Header, headerFont, Brushes.White, 40, 0);
-
-            g.DrawString(notification.Body, bodyFont, Brushes.White, new Rectangle(40, 12, Frame.Width - 40, Frame.Height - 12));
-
-            GraphicsPath path = new GraphicsPath();
-            path.AddEllipse(new Rectangle(1, 1, 36, 36));
-            if (notification.IconStyle == ICON_STYLE.ROUND)
-                g.SetClip(path);
-            if (notification.Icon != null)
-                g.DrawImage(notification.Icon, new Rectangle(1, 1, 36, 36));
-
-            return Frame;
-        }
     }
-}
+    }

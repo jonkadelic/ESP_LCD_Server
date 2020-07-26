@@ -1,26 +1,18 @@
-﻿namespace ESP_LCD_Server
+﻿using LCDWidget;
+using System;
+
+namespace ESP_LCD_Server
 {
     class Program
     {
-        static Widgets.Clock widget_clock;
-        static Widgets.Spotify widget_spotify;
-        static Widgets.Weather widget_weather;
-        static Widgets.DiscordMessages widget_discord;
-        static Widgets.D20 widget_d20;
-
         static void Main()
         {
-            widget_clock = new Widgets.Clock();
-            widget_spotify = new Widgets.Spotify();
-            widget_weather = new Widgets.Weather();
-            widget_discord = new Widgets.DiscordMessages();
-            widget_d20 = new Widgets.D20();
+            Logger.InitLogger(true);
 
-            WidgetManager.AddWidget(widget_clock);
-            WidgetManager.AddWidget(widget_spotify);
-            WidgetManager.AddWidget(widget_weather);
-            WidgetManager.AddWidget(widget_discord);
-            WidgetManager.AddWidget(widget_d20);
+            WidgetManager.LoadWidgets();
+
+            AppDomain currentDomain = AppDomain.CurrentDomain;
+            currentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
             Endpoints.WidgetAction endpoint_page_action = new Endpoints.WidgetAction();
             Endpoints.WidgetGetFrame endpoint_page_get_frame = new Endpoints.WidgetGetFrame();
@@ -33,6 +25,13 @@
             UdpInterface.AddEndpoint(endpoint_page_last);
 
             UdpInterface.Run();
+        }
+
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Exception ex = e.ExceptionObject as Exception;
+            Logger.Log(ex.Message, sender.GetType());
+            Logger.Log(ex.StackTrace, sender.GetType());
         }
     }
 }

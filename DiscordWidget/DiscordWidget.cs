@@ -7,10 +7,11 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using LCDWidget;
 
-namespace ESP_LCD_Server.Widgets
+namespace DiscordWidget
 {
-    public class DiscordMessages : BaseNotifyingWidget
+    public class DiscordWidget : BaseNotifyingWidget
     {
         private DiscordSocketClient client;
         private SocketMessage lastMessage = default;
@@ -26,8 +27,9 @@ namespace ESP_LCD_Server.Widgets
         public override string Name => "Discord";
         public override int NotifyDurationMs => 5000;
 
+        public override int Priority => 3;
 
-        public DiscordMessages()
+        public DiscordWidget()
         {
             client = new DiscordSocketClient();
 
@@ -50,7 +52,7 @@ namespace ESP_LCD_Server.Widgets
             }
 
             g.DrawString(lastMessage.Channel.Name, headerFont, Brushes.White, new Rectangle(38, 0, FrameSize.Width - 38, 20), headerFormat);
-            g.DrawString($"{lastMessage.Author.Username} - {lastMessage.CreatedAt.LocalDateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
+            g.DrawString($"{lastMessageNickname} - {lastMessage.CreatedAt.LocalDateTime.ToShortTimeString()}", nameTimeFont, Brushes.White, 38, 20);
             int attachmentHeight = 0;
             if (attachment != null)
             {
@@ -79,7 +81,7 @@ namespace ESP_LCD_Server.Widgets
         /// <returns>Task status.</returns>
         private Task Client_Log(Discord.LogMessage arg)
         {
-            Console.WriteLine(arg.ToString());
+            Logger.Log(arg.Message, GetType());
             return Task.CompletedTask;
         }
 

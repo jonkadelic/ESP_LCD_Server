@@ -1,7 +1,7 @@
 ﻿using System.Drawing;
 using System.Threading.Tasks;
 
-namespace ESP_LCD_Server.Widgets
+namespace LCDWidget
 {
     public abstract class BaseWidget
     {
@@ -10,6 +10,8 @@ namespace ESP_LCD_Server.Widgets
         /// Dimensions of a widget frame in pixels.
         /// </summary>
         public static Size FrameSize => new Size(128, 160);
+
+        public abstract int Priority { get; }
 
         /// <summary>
         /// Widget's name, used for display purposes.

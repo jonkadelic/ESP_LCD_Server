@@ -4,11 +4,12 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using LCDWidget;
 using OpenWeatherAPI;
 
-namespace ESP_LCD_Server.Widgets
+namespace WeatherWidget
 {
-    public class Weather : BaseWidget
+    public class WeatherWidget : BaseWidget
     {
         private readonly API weatherApi;
         private Query cachedQuery = null;
@@ -25,7 +26,9 @@ namespace ESP_LCD_Server.Widgets
 
         public override string Name => "Weather";
 
-        public Weather()
+        public override int Priority => 2;
+
+        public WeatherWidget()
         {
             weatherApi = new API(Secrets.WeatherToken);
             UpdateTask();

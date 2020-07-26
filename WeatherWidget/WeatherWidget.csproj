@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="cd $(TargetDir)&#xD;&#xA;cp *.dll $(SolutionDir)ESP_LCD_Server\bin\Debug\netcoreapp3.1\" />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LCDWidget\LCDWidget.csproj" />
+    <ProjectReference Include="..\OpenWeatherAPI\OpenWeatherAPI.csproj" />
+  </ItemGroup>
+
+</Project>

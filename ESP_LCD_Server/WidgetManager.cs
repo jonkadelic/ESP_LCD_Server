@@ -1,15 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using LCDWidget;
+using System;
+using System.Collections.Generic;
 
 namespace ESP_LCD_Server
 {
     public static class WidgetManager
     {
-        private static readonly List<Widgets.BaseWidget> widgets = new List<Widgets.BaseWidget>();
+        private static readonly List<BaseWidget> widgets = new List<BaseWidget>();
 
         /// <summary>
         /// Widget that's currently being displayed.
         /// </summary>
-        public static Widgets.BaseWidget CurrentWidget { get; private set; }
+        public static BaseWidget CurrentWidget { get; private set; }
         /// <summary>
         /// Number of widgets in the WidgetManager.
         /// </summary>
@@ -33,18 +35,30 @@ namespace ESP_LCD_Server
         /// <param name="oldWidget">Previous active widget.</param>
         /// <param name="newWidget">Mew active widget.</param>
         /// <param name="offset">Direction the active widget has changed in.</param>
-        public delegate void WidgetChangedEventHandler(Widgets.BaseWidget oldWidget, Widgets.BaseWidget newWidget, int offset);
+        public delegate void WidgetChangedEventHandler(BaseWidget oldWidget, BaseWidget newWidget, int offset);
+
+        public static void LoadWidgets()
+        {
+            WidgetLoader.LoadWidgets();
+            foreach (Type type in WidgetLoader.WidgetTypes)
+            {
+                BaseWidget widget = (BaseWidget)Activator.CreateInstance(type);
+                AddWidget(widget);
+            }
+
+            widgets.Sort((x, y) => x.Priority.CompareTo(y.Priority));
+        }
 
         /// <summary>
         /// Registers a widget with the Widget Manager.
         /// </summary>
         /// <param name="widget">Widget to register.</param>
-        public static void AddWidget(Widgets.BaseWidget widget)
+        public static void AddWidget(BaseWidget widget)
         {
             widgets.Add(widget);
-            if (widget is Widgets.BaseNotifyingWidget)
+            if (widget is BaseNotifyingWidget)
             {
-                (widget as Widgets.BaseNotifyingWidget).Notify += OnNotify;
+                (widget as BaseNotifyingWidget).Notify += OnNotify;
             }
             if (CurrentWidget == null) CurrentWidget = widget;
         }
@@ -53,7 +67,7 @@ namespace ESP_LCD_Server
         /// Handles incoming widget notifications.
         /// </summary>
         /// <param name="sender">Widget that sent the notification.</param>
-        private static void OnNotify(Notification notification)
+        private static void OnNotify(LCDWidget.Notification notification)
         {
             NotifyEventHandler handler = Notify;
             handler?.Invoke(notification);
@@ -84,8 +98,8 @@ namespace ESP_LCD_Server
             int newWidgetIndex = (widgets.IndexOf(CurrentWidget) + offset) % widgets.Count;
             if (newWidgetIndex < 0) newWidgetIndex += widgets.Count;
 
-            Widgets.BaseWidget oldWidget = CurrentWidget;
-            Widgets.BaseWidget newWidget = widgets[newWidgetIndex];
+            BaseWidget oldWidget = CurrentWidget;
+            BaseWidget newWidget = widgets[newWidgetIndex];
 
 
             WidgetChangedEventHandler handler = WidgetChanged;

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Diagnostics;
 using ESP_LCD_Server.Endpoints;
+using LCDWidget;
 
 namespace ESP_LCD_Server
 {
@@ -14,6 +15,9 @@ namespace ESP_LCD_Server
     {
         private const int PORT = 4567;
         private const int UDP_PACKET_SIZE = 1450; // max = 1472
+        private const int LOG_INTERVAL = 10000;
+        private static DateTime nextLog = DateTime.Now;
+        private static Dictionary<string, (int num, int count)> responseTimes = new Dictionary<string, (int num, int count)>();
 
         /// <summary>
         /// Endpoints in use by the UDP interface.
@@ -59,7 +63,6 @@ namespace ESP_LCD_Server
             {
                 dataBuffer = client.Receive(ref sender);
                 string targetEndpoint = Encoding.ASCII.GetString(dataBuffer);
-                Debug.WriteLine($"Received UDP endpoint request {targetEndpoint}.");
                 DateTime startTime = DateTime.Now;
                 IEndpoint validEndpoint = null;
                 foreach (IEndpoint endpoint in Endpoints)
@@ -79,11 +82,7 @@ namespace ESP_LCD_Server
                 else
                 {
                     // Found appropriate endpoint
-                    DateTime responseStartTime = DateTime.Now;
                     byte[] output = validEndpoint.GetResponseBody(targetEndpoint);
-                    TimeSpan responseTime = DateTime.Now - responseStartTime;
-
-                    Debug.WriteLine($"Replying with {output.Length} bytes of data to {sender.Address}:{sender.Port}.");
 
                     if (output.Length <= UDP_PACKET_SIZE)
                     {
@@ -99,7 +98,28 @@ namespace ESP_LCD_Server
                         client.Send(output[(i * UDP_PACKET_SIZE)..], output.Length - (i * UDP_PACKET_SIZE), sender);
                     }
 
-                    Debug.WriteLine($"Took {(int)(DateTime.Now - startTime).TotalMilliseconds}ms to respond to \"{targetEndpoint}\" ({(int)responseTime.TotalMilliseconds}ms to generate body).");
+                    int responseTime = (int)(DateTime.Now - startTime).TotalMilliseconds;
+
+                    if (responseTimes.ContainsKey(targetEndpoint) == false)
+                    {
+                        responseTimes.Add(targetEndpoint, (responseTime, 1));
+                    }
+                    else
+                    {
+                        (int num, int count) current = responseTimes[targetEndpoint];
+                        responseTimes[targetEndpoint] = (current.num + responseTime, current.count + 1);
+                    }
+
+                    if (DateTime.Now > nextLog)
+                    {
+                        foreach(string key in responseTimes.Keys)
+                        {
+                            (int num, int count) current = responseTimes[targetEndpoint];
+                            int avgResponseTime = current.num / current.count;
+                            Logger.Log($"Took {avgResponseTime}ms on average to respond to UDP endpoint {key}.", typeof(UdpInterface));
+                        }
+                        nextLog = DateTime.Now + new TimeSpan(0, 0, 0, 0, LOG_INTERVAL);
+                    }
                 }
             }
         }

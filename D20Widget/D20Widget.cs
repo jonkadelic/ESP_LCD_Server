@@ -1,13 +1,14 @@
-﻿using System;
+﻿using LCDWidget;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ESP_LCD_Server.Widgets
+namespace D20Widget
 {
-    public class D20 : BaseWidget
+    public class D20Widget : BaseWidget
     {
         private string lastRolled = "?";
         private List<GraphicsPath> d20Paths;
@@ -18,10 +19,12 @@ namespace ESP_LCD_Server.Widgets
         bool flash = false;
         public override string Name => "D20";
 
+        public override int Priority => 20;
+
         /// <summary>
         /// Creates a new D20 roller digit.
         /// </summary>
-        public D20()
+        public D20Widget()
         {
             float size = FrameSize.Width * 0.75f;
             d20Paths = GetD20Paths(new SizeF(size, size));
@@ -44,7 +47,7 @@ namespace ESP_LCD_Server.Widgets
                     lastRolled = (random.Next(20) + 1).ToString();
                     Thread.Sleep(random.Next(100, 300));
                 }
-                if (lastRolled == "20") nat20 = true; 
+                if (lastRolled == "20") nat20 = true;
             }).ConfigureAwait(false);
             return Task.CompletedTask;
         }

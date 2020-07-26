@@ -1,10 +1,11 @@
-﻿using System;
+﻿using LCDWidget;
+using System;
 using System.Drawing;
 using System.Threading.Tasks;
 
-namespace ESP_LCD_Server.Widgets
+namespace ClockWidget
 {
-    public class Clock : BaseWidget
+    public class ClockWidget : BaseWidget
     {
         private const int DIGIT_CHANGE_TIME_MS = 100;
         private const int DIGIT_COUNT = 6;
@@ -18,7 +19,7 @@ namespace ESP_LCD_Server.Widgets
         private readonly Point topLeft;
 
         private Rectangle[] digitRects = new Rectangle[DIGIT_COUNT];
-        private Animators.Linear[,] digitAnimators = new Animators.Linear[DIGIT_COUNT, 2];
+        private LCDWidget.Animators.Linear[,] digitAnimators = new LCDWidget.Animators.Linear[DIGIT_COUNT, 2];
 
         private string lastTimeString;
 
@@ -26,10 +27,12 @@ namespace ESP_LCD_Server.Widgets
 
         public override string Name => "Clock";
 
+        public override int Priority => 0;
+
         /// <summary>
         /// Creates a new Clock widget.
         /// </summary>
-        public Clock()
+        public ClockWidget()
         {
             topLeft = new Point(FrameSize.Width / 2 - digitSize.Width, FrameSize.Height / 2 - digitSize.Height);
             digitRects[0] = new Rectangle(topLeft, digitSize);
@@ -50,7 +53,7 @@ namespace ESP_LCD_Server.Widgets
             {
                 for (int j = 0; j < 2; j++)
                 {
-                    digitAnimators[i, j] = new Animators.Linear(durationMs: DIGIT_CHANGE_TIME_MS, frameSize: FrameSize);
+                    digitAnimators[i, j] = new LCDWidget.Animators.Linear(durationMs: DIGIT_CHANGE_TIME_MS, frameSize: FrameSize);
                 }
             }
 

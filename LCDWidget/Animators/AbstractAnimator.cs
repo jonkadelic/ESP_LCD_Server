@@ -1,7 +1,7 @@
 ﻿using System.Drawing;
 using System.Timers;
 
-namespace ESP_LCD_Server.Animators
+namespace LCDWidget.Animators
 {
     public abstract class AbstractAnimator
     {

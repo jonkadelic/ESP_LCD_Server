@@ -9,10 +9,12 @@ using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.IO;
 using SuperfastBlur;
+using LCDWidget;
+using System.Linq;
 
-namespace ESP_LCD_Server.Widgets
+namespace SpotifyWidget
 {
-    public class Spotify : BaseNotifyingWidget
+    public class SpotifyWidget : BaseNotifyingWidget
     {
         private readonly string clientToken = Secrets.SpotifyClientToken;
         private string accessToken = null;
@@ -23,19 +25,29 @@ namespace ESP_LCD_Server.Widgets
         private const int updatePeriodMs = 5000;
         private Bitmap artImage;
         private Bitmap artImageBlurred;
+        private string songName;
+        private string albumName;
+        private string artistName;
         private Font smallFont = new Font(FontFamily.GenericSansSerif, 7);
         private Font bigFont = new Font(FontFamily.GenericSansSerif, 10);
         private StringFormat stringFormat = new StringFormat() { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         private StringFormat pauseFormat = new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         private bool renderArtBig = false;
-        private int artSmallDims = 100;
-        private int artLargeDims = 128;
+        private Rectangle artSmallRectangle;
+        private Rectangle artLargeRectangle;
+        private DateTime lastUpdate;
 
         public override string Name => "Spotify";
-        public override int NotifyDurationMs => 1000;
+        public override int NotifyDurationMs => 3000;
 
-        public Spotify()
+        public override int Priority => 1;
+
+        public SpotifyWidget()
         {
+            int artSmallDims = (int)(FrameSize.Width * 0.8);
+            int artLargeDims = FrameSize.Width;
+            artSmallRectangle = new Rectangle(new Point(FrameSize.Width / 2 - artSmallDims / 2, FrameSize.Height / 2 - artSmallDims / 2 + 15), new Size(artSmallDims, artSmallDims));
+            artLargeRectangle = new Rectangle(new Point(0, FrameSize.Height / 2 - artLargeDims / 2), new Size(artLargeDims, artLargeDims));
             UpdateTask();
         }
 
@@ -51,7 +63,6 @@ namespace ESP_LCD_Server.Widgets
         {
             Bitmap Frame = new Bitmap(FrameSize.Width, FrameSize.Height);
 
-            string songName, songArtist, songAlbum;
             Graphics g = Graphics.FromImage(Frame);
             g.FillRectangle(Brushes.Black, new Rectangle(Point.Empty, FrameSize));
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
@@ -62,58 +73,96 @@ namespace ESP_LCD_Server.Widgets
                 return Frame;
             }
 
+            if (artImageBlurred != null)
+            {
+                g.DrawImage(artImageBlurred, new Rectangle(-16, 0, FrameSize.Height, FrameSize.Height));
+                g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(Point.Empty, FrameSize));
+            }
+
             if (renderArtBig)
             {
                 if (artImage != null)
                 {
-                    g.DrawImage(artImage, new Rectangle(0, 16, artLargeDims, artLargeDims));
+                    g.DrawImage(artImage, artLargeRectangle);
                 }
                 if (cachedCurrentlyPlaying.IsPlaying == false)
                 {
-                    g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 16, artLargeDims, artLargeDims));
-                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(0, 16, artLargeDims, artLargeDims), pauseFormat);
-                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(1, 16, artLargeDims, artLargeDims), pauseFormat);
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(63, Color.Black)), artLargeRectangle);
+                    g.DrawString("Paused", bigFont, Brushes.White, artLargeRectangle, pauseFormat);
                 }
             }
             else
             {
-                if (artImageBlurred != null)
-                {
-                    g.DrawImage(artImageBlurred, new Rectangle(-16, 0, FrameSize.Height, FrameSize.Height));
-                }
-                g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(0, 0, FrameSize.Width, FrameSize.Height));
-
                 if (artImage != null)
                 {
-                    g.DrawImage(artImage, new Rectangle(14, 50, artSmallDims, artSmallDims));
+                    g.DrawImage(artImage, artSmallRectangle);
                 }
                 if (cachedCurrentlyPlaying.IsPlaying == false)
                 {
-                    g.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Black)), new Rectangle(14, 50, artSmallDims, artSmallDims));
-                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(14, 50, artSmallDims, artSmallDims), pauseFormat);
-                    g.DrawString("| |", bigFont, Brushes.White, new Rectangle(15, 50, artSmallDims, artSmallDims), pauseFormat);
-                }
-                if (cachedCurrentlyPlaying.Item.Type == ItemType.Track)
-                {
-                    FullTrack track = cachedCurrentlyPlaying.Item as FullTrack;
-                    songName = track.Name;
-                    songArtist = track.Artists[0].Name;
-                    songAlbum = track.Album.Name;
-                }
-                else
-                {
-                    FullEpisode episode = cachedCurrentlyPlaying.Item as FullEpisode;
-                    songName = episode.Name;
-                    songArtist = episode.Show.Publisher;
-                    songAlbum = episode.Show.Name;
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(63, Color.Black)), artSmallRectangle);
+                    g.DrawString("Paused", bigFont, Brushes.White, artSmallRectangle, pauseFormat);
                 }
                 g.DrawString($"{songName}", bigFont, Brushes.Black, new Rectangle(1, 1, FrameSize.Width, 16), stringFormat);
                 g.DrawString($"{songName}", bigFont, Brushes.White, new Rectangle(0, 0, FrameSize.Width, 16), stringFormat);
-                g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.Black, new Rectangle(1, 17, FrameSize.Width, 24), stringFormat);
-                g.DrawString($"{songAlbum}\n{songArtist}", smallFont, Brushes.White, new Rectangle(0, 16, FrameSize.Width, 24), stringFormat);
+                g.DrawString($"{albumName}\n{artistName}", smallFont, Brushes.Black, new Rectangle(1, 17, FrameSize.Width, 24), stringFormat);
+                g.DrawString($"{albumName}\n{artistName}", smallFont, Brushes.White, new Rectangle(0, 16, FrameSize.Width, 24), stringFormat);
             }
 
+            float progress;
+            if (cachedCurrentlyPlaying.Item.Type == ItemType.Track)
+            {
+                FullTrack item = cachedCurrentlyPlaying.Item as FullTrack;
+                progress = (float)(cachedCurrentlyPlaying.ProgressMs + (DateTime.Now - lastUpdate).TotalMilliseconds) / item.DurationMs;
+            }
+            else
+            {
+                FullEpisode item = cachedCurrentlyPlaying.Item as FullEpisode;
+                progress = (float)(cachedCurrentlyPlaying.ProgressMs + (DateTime.Now - lastUpdate).TotalMilliseconds) / item.DurationMs;
+            }
+
+            g.DrawImageUnscaled(DrawProgressLine(progress), Point.Empty);
+
             return Frame;
+        }
+
+        public Bitmap DrawProgressLine(float progress)
+        {
+            int top = 0;
+            int bottom = FrameSize.Height - 1;
+            int left = 0;
+            int right = FrameSize.Width - 1;
+            Point lineTopLeft = new Point(left, top);
+            Point lineTopRight = new Point(right, top);
+            Point lineBottomRight = new Point(right, bottom);
+            Point lineBottomLeft = new Point(left, bottom);
+
+            Bitmap bitmap = new Bitmap(FrameSize.Width, FrameSize.Height);
+            using Graphics g = Graphics.FromImage(bitmap);
+
+            if (progress <= 0.25)
+            {
+                g.DrawLine(Pens.White, lineTopLeft, new Point((int)(left + (right - left) * (progress * 4)), top));
+            }
+            else if (progress <= 0.5)
+            {
+                g.DrawLine(Pens.White, lineTopLeft, lineTopRight);
+                g.DrawLine(Pens.White, lineTopRight, new Point(right, (int)(top + (bottom - top) * ((progress - 0.25) * 4))));
+            }
+            else if (progress <= 0.75)
+            {
+                g.DrawLine(Pens.White, lineTopLeft, lineTopRight);
+                g.DrawLine(Pens.White, lineTopRight, lineBottomRight);
+                g.DrawLine(Pens.White, lineBottomRight, new Point((int)(right + (left - right) * ((progress - 0.5) * 4)), bottom));
+            }
+            else
+            {
+                g.DrawLine(Pens.White, lineTopLeft, lineTopRight);
+                g.DrawLine(Pens.White, lineTopRight, lineBottomRight);
+                g.DrawLine(Pens.White, lineBottomRight, lineBottomLeft);
+                g.DrawLine(Pens.White, lineBottomLeft, new Point(left, (int)(bottom + (top - bottom) * ((progress - 0.75) * 4))));
+            }
+
+            return bitmap;
         }
 
         /// <summary>
@@ -124,6 +173,7 @@ namespace ESP_LCD_Server.Widgets
             while (true)
             {
                 await UpdateCachedCurrentlyPlaying();
+                lastUpdate = DateTime.Now;
                 Thread.Sleep(updatePeriodMs);
             }
         }
@@ -136,6 +186,7 @@ namespace ESP_LCD_Server.Widgets
         {
             if (accessToken == null || client == null || DateTime.Now > nextAccessTokenRefresh)
             {
+                Logger.Log("Refreshing access token.", this.GetType());
                 await RefreshAccessToken();
                 client = new SpotifyClient(accessToken);
             }
@@ -156,7 +207,24 @@ namespace ESP_LCD_Server.Widgets
             }
             cachedCurrentlyPlaying = newCurrentlyPlaying;
 
-            string artUrl = (cachedCurrentlyPlaying.Item.Type == ItemType.Track) ? ((FullTrack)cachedCurrentlyPlaying.Item).Album.Images[0].Url : ((FullEpisode)cachedCurrentlyPlaying.Item).Show.Images[0].Url;
+            string artUrl;
+
+            if (cachedCurrentlyPlaying.Item.Type == ItemType.Track)
+            {
+                FullTrack item = cachedCurrentlyPlaying.Item as FullTrack;
+                songName = item.Name;
+                albumName = item.Album.Name;
+                artistName = item.Artists.Select((x) => x.Name).Aggregate((x, y) => x + ", " + y);
+                artUrl = item.Album.Images[0].Url;
+            }
+            else
+            {
+                FullEpisode item = cachedCurrentlyPlaying.Item as FullEpisode;
+                songName = item.Name;
+                albumName = item.Show.Name;
+                artistName = item.Show.Publisher;
+                artUrl = item.Show.Images[0].Url;
+            }
 
             using WebClient webClient = new WebClient();
             byte[] data = webClient.DownloadData(artUrl);
@@ -164,7 +232,7 @@ namespace ESP_LCD_Server.Widgets
             artImage = (Bitmap)System.Drawing.Image.FromStream(ms);
             artImageBlurred = new GaussianBlur(artImage).Process(20);
 
-            Notification notif = new Notification($"{((newCurrentlyPlaying.Item.Type == ItemType.Track) ? (newCurrentlyPlaying.Item as FullTrack).Album.Name : (newCurrentlyPlaying.Item as FullEpisode).Show.Name)}\n{((newCurrentlyPlaying.Item.Type == ItemType.Track) ? (newCurrentlyPlaying.Item as FullTrack).Artists[0].Name : (newCurrentlyPlaying.Item as FullEpisode).Show.Publisher)}", this, artImage, Notification.ICON_STYLE.SQUARE, NotifyDurationMs, (newCurrentlyPlaying.Item.Type == ItemType.Track) ? (newCurrentlyPlaying.Item as FullTrack).Name : (newCurrentlyPlaying.Item as FullEpisode).Name);
+            Notification notif = new Notification($"{albumName}\n{artistName}", this, artImage, Notification.ICON_STYLE.SQUARE, NotifyDurationMs, songName);
 
             OnNotify(notif);
         }
